@@ -721,6 +721,11 @@ test('uses the same primary route links on the ledger and legal pages', async ({
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of use');
   await page.goto('/404.html');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
+  if ((page.viewportSize()?.width ?? 0) <= 390) {
+    const returnBox = await page.getByRole('link', { name: 'Return to the ledger' }).boundingBox();
+    const sampleBox = await page.getByRole('link', { name: 'Try the sample ledger' }).boundingBox();
+    expect(sampleBox!.y).toBeGreaterThanOrEqual(returnBox!.y + returnBox!.height + 8);
+  }
 });
 
 test('explains excess currency precision instead of calling it zero', async ({ page }) => {
