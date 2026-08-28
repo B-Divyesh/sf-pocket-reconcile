@@ -60,6 +60,41 @@ test('supports the primary keyboard path and dialog focus', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Plant my first account' })).toBeFocused();
 });
 
+test('makes no third-party requests in the ordinary free workflow', async ({ page }) => {
+  const unexpectedOrigins = new Set<string>();
+  page.on('request', request => {
+    const origin = new URL(request.url()).origin;
+    if (!['http://127.0.0.1:4173', 'https://pocket-reconcile.sociobot.in'].includes(origin)) unexpectedOrigins.add(origin);
+  });
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  expect([...unexpectedOrigins]).toEqual([]);
+});
+
+test('announces an installed service-worker update with an action', async ({ page }) => {
+  await page.addInitScript(() => {
+    const worker = Object.assign(new EventTarget(), { state: 'installing' });
+    const registration = Object.assign(new EventTarget(), { installing: worker });
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        controller: {},
+        register: async () => {
+          setTimeout(() => {
+            registration.dispatchEvent(new Event('updatefound'));
+            worker.state = 'installed';
+            worker.dispatchEvent(new Event('statechange'));
+          }, 50);
+          return registration;
+        }
+      }
+    });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('A fresh field guide is ready.');
+  await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
+});
+
 test('has no serious accessibility violations on first run', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

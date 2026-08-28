@@ -39,7 +39,7 @@ npm run build
 npm run preview
 ```
 
-`npm test` runs unit tests, a clean production build, and Playwright mobile tests (including axe accessibility and an offline reload). Playwright 1.58.2 is pinned; its Chromium browser must be available. The exact deploy command is `npm run build`, which writes the static product to `./dist` with `dist/index.html` at its root.
+`npm test` runs unit tests, a strict TypeScript production build, and Playwright tests at 390×844 mobile and 1440×1000 desktop (including axe accessibility, keyboard, privacy-egress, update-notice, and offline-reload checks). Playwright 1.58.2 is pinned; its Chromium browser must be available. The exact deploy command is `npm run build`, which writes the static product to `./dist` with `dist/index.html` at its root. Set `PLAYWRIGHT_BASE_URL` to run the same browser suite against a deployed site.
 
 ## CSV format
 
@@ -61,7 +61,7 @@ See [the design thesis](.factory/design.md), [privacy policy](privacy/index.html
 
 ## Deploy
 
-Deploy the contents of `dist/` as a static site. The host should serve directory indexes for `/privacy/` and `/terms/`. Do not configure an SPA catch-all over those pages. The factory owns DNS and deployment infrastructure.
+Deploy the contents of `dist/` as a static site. The included Azure Static Web Apps configuration gives Vite's content-hashed `/immutable/*` files a one-year immutable cache policy while keeping `sw.js` revalidated, sets the manifest MIME type, and applies the response security policy. The host should serve directory indexes for `/privacy/` and `/terms/`. Do not configure an SPA catch-all over those pages. The factory owns DNS and deployment infrastructure.
 
 ## License
 
