@@ -626,6 +626,16 @@ test('uses the same primary route links on the ledger and legal pages', async ({
     await expect(nav.getByRole('link', { name: 'Demo' })).toHaveAttribute('href', '/demo');
     await expect(nav.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
     await expect(nav.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms/');
+    if ((page.viewportSize()?.width ?? 0) <= 390) {
+      const boxes = await Promise.all(['Ledger', 'Demo', 'Privacy', 'Terms'].map(name => nav.getByRole('link', { name }).boundingBox()));
+      for (const box of boxes) {
+        expect(box?.width).toBeGreaterThanOrEqual(44);
+        expect(box?.height).toBeGreaterThanOrEqual(44);
+      }
+      for (let index = 1; index < boxes.length; index += 1) {
+        expect(boxes[index]!.x).toBeGreaterThanOrEqual(boxes[index - 1]!.x + boxes[index - 1]!.width);
+      }
+    }
   }
   await page.goto('/privacy/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy policy');
