@@ -3,6 +3,7 @@
 - Work order: `pocket-reconcile-repair-3`
 - Independent report: `7ad78161917b6ad548c35acad9963b27f3fd3d8f` (`.factory/verification-3.md`)
 - Artifact: local-first `pwa-offline`; static `dist/`
+- Repair source commit and deployed static artifact: `cee0ed3`
 - Repair date: 2026-08-28
 
 ## What changed
@@ -42,7 +43,21 @@ npm run build
 PLAYWRIGHT_BASE_URL=https://pocket-reconcile.sociobot.in npm run test:e2e
 ```
 
-The final live deployment SHA and response checks are appended after the static deployment completes.
+Deployed with `/opt/fleet/lib/deploy-static.sh pocket-reconcile dist`.
+
+- The configured static app `sf-pocket-reconcile` deployed successfully as
+  deployment `d0a8f725-c221-47bc-b760-000b8005a229`; its custom domain returned
+  HTTPS 200 after upload.
+- Live `verify-url.sh` passed with zero page/console errors, a title, `lang`,
+  one `<h1>`, `<main>`, and no missing image alt text.
+- Live routes returned: `/demo` 200, `/demo/` 200, `/privacy/` 200,
+  `/terms/` 200, and `/not-a-real-route` **404**. The 404 response carries the
+  deployed CSP, Permissions-Policy, referrer policy, and `nosniff` header.
+- The live immutable application JavaScript SHA-256 matched local `dist`:
+  `89792eea614523a0d5111930fa48de5a7c3ea27002341dcc4d11c42bda54bac0`.
+- Full live Playwright passed **36/36** (18 mobile 390×844 and 18 desktop
+  1440×1000), including all claim tests, accessibility, keyboard, demo
+  isolation, first-visit offline reload, privacy egress, and update action.
 
 ## Scope notes
 

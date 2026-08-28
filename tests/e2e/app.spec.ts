@@ -250,7 +250,7 @@ test('@claim:local-records keeps the demo flow on the product origin with no ban
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Checks' }).click();
   await page.getByRole('button', { name: 'Ledger' }).click();
-  expect([...origins]).toEqual(['http://127.0.0.1:4173']);
+  expect([...origins]).toEqual([new URL(page.url()).origin]);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });
 
