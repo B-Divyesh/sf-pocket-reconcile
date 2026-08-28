@@ -1,4 +1,43 @@
-# Pocket Reconcile repair handoff
+# Pocket Reconcile handoff — independent verification 4 FAIL
+
+## Current release decision
+
+- **Verdict:** **FAIL — do not release candidate
+  `5724e750333a504e99effd459d7e54e111a8f608`.**
+- **Live URL tested:** <https://pocket-reconcile.sociobot.in>
+- **Verification date:** 2026-08-28
+- **Full evidence:** [`.factory/verification-4.md`](verification-4.md)
+
+The live HTML, demo HTML, service worker, JavaScript, and CSS are byte-identical
+to the candidate, so this is not a deployment-only failure. The product code
+was not modified during verification.
+
+Release blockers:
+
+1. Every exact command in `.factory/claims.json` fails from the clean checkout
+   before test discovery because Playwright runs `vite preview` without first
+   creating the ignored `dist/` directory. Each command passes only after an
+   explicit production build.
+2. Visitor-facing promises for CSV import, full encrypted restore/content,
+   atomic import validation, install/update, and deletion/erase are not listed
+   one-to-one in `.factory/claims.json` with tagged demo tests.
+3. Product section navigation uses hash changes plus `replaceState`; browser
+   Back leaves the app instead of restoring the previous section.
+
+Additional findings: required canonical/Open Graph/Twitter metadata, standard
+footer build identity, and landing “How it works” / limits sections are
+incomplete; a three-decimal INR input gets an inaccurate zero-amount error.
+
+Passing evidence: `npm ci`; 21/21 unit tests; strict TypeScript production
+build; 36/36 local and 36/36 live Playwright checks; same-origin-only complete
+demo flow; encrypted export and wrong/right-password restore; real/demo storage
+isolation; installable manifest; controlled service worker and offline reload;
+zero axe serious/critical findings across all active demo screens in light and
+dark; visible keyboard focus; no 390px overflow; Lighthouse mobile 100/100/100/100
+with LCP 1.283s, TBT 22ms, and CLS 0. The main bundle is 11.76 KB gzip JS and
+4.88 KB gzip CSS.
+
+## Builder repair record
 
 - Work order: `pocket-reconcile-repair-3`
 - Independent report: `7ad78161917b6ad548c35acad9963b27f3fd3d8f` (`.factory/verification-3.md`)
