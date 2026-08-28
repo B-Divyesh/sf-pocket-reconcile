@@ -6,8 +6,11 @@ a { color:var(--fern); text-underline-offset:.18em; }
 .skip-link { position:fixed; top:8px; left:8px; z-index:5; padding:10px 14px; color:var(--paper); background:var(--ink); transform:translateY(-160%); }
 .skip-link:focus { transform:none; }
 header,footer,main { width:min(760px,calc(100% - 32px)); margin:auto; }
-header { padding:28px 0; border-bottom:1px solid var(--rule); }
+header { padding:20px 0; border-bottom:1px solid var(--rule); display:flex; align-items:center; justify-content:space-between; gap:20px; }
 .wordmark { color:var(--ink); font:700 20px Georgia,Cambria,serif; text-decoration:none; }
+header nav,footer nav { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+header nav a,footer a { display:inline-flex; min-width:44px; min-height:44px; align-items:center; justify-content:center; }
+header nav a[aria-current="page"] { color:var(--ink); font-weight:700; text-decoration-thickness:3px; }
 main { padding:64px 0 80px; }
 h1,h2 { font-family:Georgia,Cambria,serif; font-weight:500; letter-spacing:-.025em; line-height:1.08; }
 h1 { max-width:680px; margin:0 0 24px; font-size:clamp(2.5rem,7vw,4.7rem); }
@@ -16,6 +19,7 @@ p { max-width:68ch; }
 .eyebrow { margin:0 0 12px; color:var(--ochre); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
 .lede { color:var(--muted); font-size:1.2rem; }
 .button { display:inline-flex; min-height:46px; align-items:center; padding:10px 18px; border-radius:5px; color:#fff; background:var(--fern); font-weight:700; text-decoration:none; }
-footer { padding:28px 0 40px; border-top:1px solid var(--rule); color:var(--muted); font-size:13px; }
+footer { padding:28px 0 40px; border-top:1px solid var(--rule); color:var(--muted); font-size:13px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 20px; }
+@media (max-width:560px) { header { align-items:flex-start; } header nav { justify-content:flex-end; gap:0; } footer { align-items:flex-start; flex-direction:column; } }
 @media (prefers-color-scheme:dark) { :root { --paper:#171c18;--sheet:#222923;--ink:#f0f1e4;--muted:#b6c0b5;--fern:#86b591;--ochre:#e0aa63;--rule:#465048; } .button { color:#101712; } }
 @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important;transition:none!important; } }

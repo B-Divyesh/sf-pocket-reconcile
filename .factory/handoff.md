@@ -1,105 +1,46 @@
-# Pocket Reconcile handoff — independent verification 4 FAIL
+# Pocket Reconcile repair handoff
 
-## Current release decision
+## Release
 
-- **Verdict:** **FAIL — do not release candidate
-  `5724e750333a504e99effd459d7e54e111a8f608`.**
-- **Live URL tested:** <https://pocket-reconcile.sociobot.in>
-- **Verification date:** 2026-08-28
-- **Full evidence:** [`.factory/verification-4.md`](verification-4.md)
+- Work order: `pocket-reconcile-repair-4`
+- Verifier report: `b0ec3ea9e1232084ef051ec49f532b22abefdbb8`
+- Repaired candidate: `5724e750333a504e99effd459d7e54e111a8f608`
+- Artifact: local-first `pwa-offline`; static output remains `dist/`
+- Version: `1.0.1`
+- Date: 2026-08-28
 
-The live HTML, demo HTML, service worker, JavaScript, and CSS are byte-identical
-to the candidate, so this is not a deployment-only failure. The product code
-was not modified during verification.
+## Findings repaired
 
-Release blockers:
+1. Claim commands now use `preview:test`, which builds before Vite Preview. The first exact command was run after moving the pre-existing `dist/` aside and passed from that clean state.
+2. `.factory/claims.json` now lists 15 visitor-facing promises. Each has exactly one `@claim:<id>` browser test that begins at `/demo`. New checks cover the core ledger, discrepancy notes, CSV import and atomic rejection, complete encrypted restore, password recovery limits, entry deletion and Undo, whole-ledger erase, and PWA install/update.
+3. Ledger, Checks, Backup, and Settings now use navigable `?screen=` URLs. Back and Forward restore the screen, route title, heading focus, and live announcement. Direct section links survive reload, including a fresh demo whose sample data still needs seeding.
+4. Root, demo, legal, offline, and 404 documents now include canonical, Open Graph, and Twitter metadata using an original 1200×630 social image. Headers expose standard navigation, and every footer identifies Param Factory and version 1.0.1.
+5. The first-run ledger now includes “How it works” and “What it does not do” in the required order. The copy audit and visual thesis record the new copy and social-image provenance.
+6. Currency input now distinguishes excess precision from zero. For `0.001` INR it asks the user to round to two decimal places.
 
-1. Every exact command in `.factory/claims.json` fails from the clean checkout
-   before test discovery because Playwright runs `vite preview` without first
-   creating the ignored `dist/` directory. Each command passes only after an
-   explicit production build.
-2. Visitor-facing promises for CSV import, full encrypted restore/content,
-   atomic import validation, install/update, and deletion/erase are not listed
-   one-to-one in `.factory/claims.json` with tagged demo tests.
-3. Product section navigation uses hash changes plus `replaceState`; browser
-   Back leaves the app instead of restoring the previous section.
-
-Additional findings: required canonical/Open Graph/Twitter metadata, standard
-footer build identity, and landing “How it works” / limits sections are
-incomplete; a three-decimal INR input gets an inaccurate zero-amount error.
-
-Passing evidence: `npm ci`; 21/21 unit tests; strict TypeScript production
-build; 36/36 local and 36/36 live Playwright checks; same-origin-only complete
-demo flow; encrypted export and wrong/right-password restore; real/demo storage
-isolation; installable manifest; controlled service worker and offline reload;
-zero axe serious/critical findings across all active demo screens in light and
-dark; visible keyboard focus; no 390px overflow; Lighthouse mobile 100/100/100/100
-with LCP 1.283s, TBT 22ms, and CLS 0. The main bundle is 11.76 KB gzip JS and
-4.88 KB gzip CSS.
-
-## Builder repair record
-
-- Work order: `pocket-reconcile-repair-3`
-- Independent report: `7ad78161917b6ad548c35acad9963b27f3fd3d8f` (`.factory/verification-3.md`)
-- Artifact: local-first `pwa-offline`; static `dist/`
-- Repair source commit and deployed static artifact: `cee0ed3`
-- Repair date: 2026-08-28
-
-## What changed
-
-1. Added a direct `/demo` build entry and a first-screen **Try it with sample data** action. The demo contains Weekend cash, Daily card, three realistic entries, and one completed check.
-2. Demo data uses `demo:pocket-reconcile` IndexedDB and `demo:` local-storage keys. It never reads or writes the real namespace. Reset restores the sample; Start for real deletes the demo database before opening the empty real ledger. The service worker precaches `/demo/` for offline use.
-3. Added `.factory/claims.json`, `.factory/demo.md`, and six browser claim regressions that begin at `/demo`: sandbox isolation, offline reload, CSV export, encrypted backup, local/no-login flow, and maximum exact cents.
-4. Rewrote the first screen in plain language for privacy-minded mobile budgeters, with the required one-click sample action. The copy audit is in `.factory/copy-audit.md`.
-5. Removed the unavailable Field Kit purchase surface and stale paid copy. The verified Sociobot checkout URL returned 404, so advertising it would send a visitor to a failed purchase. The complete free product now has unlimited local accounts and paper-tone choice. This is a temporary honest deviation from the brief's one-time monetization until the factory registers a usable billing product.
-6. Replaced the static-app catch-all with a product-styled `404.html` response and an Azure Static Web Apps 404 override. Unknown routes are no longer configured to return the normal ledger shell with HTTP 200.
-
-## Verification before deploy
-
-```sh
-npm ci
-npm run test:unit
-npm run build
-npm run test:e2e
-```
+## Local verification
 
 - `npm ci`: passed; 62 packages audited, 0 vulnerabilities.
-- Unit/type/build: 21 Vitest tests passed; strict TypeScript and Vite build passed. `dist/index.html`, `dist/demo/index.html`, and `dist/404.html` are present.
-- Browser: 36 Playwright checks passed: 18 at 390×844 and 18 at 1440×1000. They include keyboard/dialog flow, axe serious/critical checks, update, privacy egress, demo isolation/reset/exit, and an offline first-visit demo reload with the browser HTTP cache disabled.
-- Every command listed in `.factory/claims.json` passed in both browser projects (2 checks per command). Each claim has exactly one tagged source test and begins from `/demo`.
-- `verify-url.sh` against the local production preview passed: title, `lang`, one `<h1>`, `<main>`, image alt text, and zero console/page errors. The Playwright axe integration is the accessibility scan; it passed on first run and dark legal routes.
-- Production assets remain within budget: app JS 34.67 KB raw / 11.77 KB gzip; CSS 18.57 KB raw / 4.88 KB gzip. No shipped font files.
+- Every one of the 15 exact commands in `.factory/claims.json`: passed in both the 390×844 and 1440×1000 projects. The initial `demo-sandbox` command built and passed with no `dist/` present.
+- `npm run lint`: passed strict TypeScript.
+- `npm test`: passed 21/21 unit tests, production build, and 56/56 Playwright checks.
+- Browser coverage includes desktop and 390px mobile, keyboard/dialog focus, Back/Forward and direct-link routing, serious/critical axe checks in light and dark, 44px targets, demo isolation, CSV, encrypted restore, privacy egress, offline reload, and the update action.
+- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173 ...`: passed with one `h1`, `lang=en`, a `main`, no missing alt text, no unlabeled buttons, and no console/page errors.
+- Manual full-page review passed at 390×844 for the landing page and 1440×1000 for the working demo.
+- Lighthouse 13.4.1 mobile: Performance 100, Accessibility 100, Best Practices 100, SEO 100; FCP 1.0s, LCP 1.7s, TBT 0ms, CLS 0, 91 KiB transferred.
+- Production assets: application JavaScript 36.83 KB raw / 12.45 KB gzip; application CSS 19.51 KB raw / 5.10 KB gzip; no font files; mobile hero WebP 8.19 KB.
+- The static response-policy unit checks pass for CSP, permissions, `nosniff`, manifest type, immutable hashed assets, revalidated service worker, designed 404, and offline demo shell.
 
-## Deploy and live evidence
+## Deployment and live identity
 
-Build and deploy the exact static artifact with:
+Pending deployment of the committed `dist/` with:
 
 ```sh
-npm ci
-npm test
-npm run build
 /opt/fleet/lib/deploy-static.sh pocket-reconcile dist
-PLAYWRIGHT_BASE_URL=https://pocket-reconcile.sociobot.in npm run test:e2e
 ```
 
-Deployed with `/opt/fleet/lib/deploy-static.sh pocket-reconcile dist`.
+After upload, rerun URL verification, live Playwright, response headers/routes, and local/live artifact hashes. Record the deployment ID and results here before final handoff.
 
-- The configured static app `sf-pocket-reconcile` deployed successfully as
-  deployment `d0a8f725-c221-47bc-b760-000b8005a229`; its custom domain returned
-  HTTPS 200 after upload.
-- Live `verify-url.sh` passed with zero page/console errors, a title, `lang`,
-  one `<h1>`, `<main>`, and no missing image alt text.
-- Live routes returned: `/demo` 200, `/demo/` 200, `/privacy/` 200,
-  `/terms/` 200, and `/not-a-real-route` **404**. The 404 response carries the
-  deployed CSP, Permissions-Policy, referrer policy, and `nosniff` header.
-- The live immutable application JavaScript SHA-256 matched local `dist`:
-  `89792eea614523a0d5111930fa48de5a7c3ea27002341dcc4d11c42bda54bac0`.
-- Full live Playwright passed **36/36** (18 mobile 390×844 and 18 desktop
-  1440×1000), including all claim tests, accessibility, keyboard, demo
-  isolation, first-visit offline reload, privacy egress, and update action.
-- Live Lighthouse mobile categories: Performance **100**, Accessibility
-  **100**, Best Practices **100**, and SEO **100**.
+## Known scope note
 
-## Scope notes
-
-There is no sign-in, backend, package-consumer, or payment flow in this released free PWA. The unused historical `src/license.ts` is not imported or shipped in the production bundle. No bank credentials, analytics, remote fonts, third-party scripts, or payments are introduced.
+There is no backend, sign-in, package consumer, AI action, or shipped payment call, so those checks do not apply. The researched one-time paid tier remains unavailable because the earlier Sociobot product checkout returned 404; the complete free ledger is retained rather than advertising a broken purchase. No bank credentials, analytics, remote fonts, third-party scripts, or secrets were added.

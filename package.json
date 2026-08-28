@@ -1,12 +1,14 @@
 {
   "name": "pocket-reconcile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "preview:test": "npm run build && vite preview",
+    "lint": "tsc --noEmit --pretty false",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:claims": "playwright test",

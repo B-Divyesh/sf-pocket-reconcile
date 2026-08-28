@@ -60,22 +60,18 @@ test('rejects duplicate account names before they can make CSV assignment ambigu
   await expect(page.locator('#account-dialog')).toBeVisible();
 });
 
-test('undo restores a deleted entry and its balance', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Create my first account' }).click();
-  await page.getByLabel('Account name').fill('Pocket cash');
-  await page.getByLabel('Balance right now').fill('90.00');
-  await page.getByRole('button', { name: 'Create account' }).click();
+test('@claim:entry-delete deletes and restores an individual entry', async ({ page }) => {
+  await page.goto('/demo');
   await page.getByLabel('Received').check();
   await page.getByLabel('Amount INR').fill('5.00');
   await page.getByLabel('Note').fill('Cash returned');
   await page.getByRole('button', { name: 'Add to ledger' }).click();
-  await expect(page.getByText('₹95.00', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('₹109.50', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Delete Cash returned entry' }).click();
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(page.getByText('₹90.00', { exact: true }).first()).toBeVisible();
+  await page.locator('#confirm-delete').click();
+  await expect(page.getByText('₹104.50', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(page.getByText('₹95.00', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('₹109.50', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Cash returned', { exact: true })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('Entry restored.');
 });
@@ -104,7 +100,7 @@ test('makes no third-party requests in the ordinary free workflow', async ({ pag
   expect([...unexpectedOrigins]).toEqual([]);
 });
 
-test('announces an installed service-worker update and reloads from its action', async ({ page }) => {
+test('@claim:pwa-install-update exposes an installable manifest and applies an update', async ({ page, context }) => {
   let documentRequests = 0;
   page.on('request', request => { if (request.resourceType() === 'document') documentRequests += 1; });
   await page.addInitScript(() => {
@@ -125,7 +121,13 @@ test('announces an installed service-worker update and reloads from its action',
       }
     });
   });
-  await page.goto('/');
+  await page.goto('/demo');
+  const manifest = await page.evaluate(async () => await (await fetch('/manifest.webmanifest')).json()) as { display: string; start_url: string; icons: unknown[] };
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toMatch(/^\//);
+  expect(manifest.icons).toHaveLength(3);
+  const manifestCheck = await (await context.newCDPSession(page)).send('Page.getAppManifest');
+  expect(manifestCheck.errors).toEqual([]);
   await expect(page.getByRole('status')).toContainText('A fresh field guide is ready.');
   await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
   const before = documentRequests;
@@ -198,6 +200,28 @@ test('@claim:demo-sandbox opens realistic sample data in its own namespace and d
   }));
   expect(namespaces.databases).toContain('demo:pocket-reconcile');
   expect(namespaces.keys.every(key => key.startsWith('demo:'))).toBe(true);
+  await expect(page.locator('#account-select option')).toHaveCount(2);
+  await page.getByLabel('Amount INR').fill('1.00');
+  await page.getByLabel('Note').fill('Temporary demo entry');
+  await page.getByRole('button', { name: 'Add to ledger' }).click();
+  await expect(page.getByText('Temporary demo entry', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.getByText('Temporary demo entry', { exact: true })).toHaveCount(0);
+  const resetCounts = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('demo:pocket-reconcile');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const counts = await Promise.all(['accounts', 'transactions', 'reconciliations'].map(store => new Promise<number>((resolve, reject) => {
+      const request = database.transaction(store).objectStore(store).count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    })));
+    database.close();
+    return counts;
+  });
+  expect(resetCounts).toEqual([2, 3, 1]);
   await page.getByRole('button', { name: 'Start for real' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
@@ -223,12 +247,18 @@ test('@claim:csv-export exports every sample transaction as CSV', async ({ page 
     for await (const chunk of stream) chunks.push(Buffer.from(chunk));
     return Buffer.concat(chunks).toString('utf8');
   });
-  expect(csv.split('\n')).toHaveLength(4);
+  const rows = csv.trim().split('\n');
+  expect(rows).toHaveLength(4);
+  expect(rows[0]).toBe('date,account,account_type,currency,amount,note');
+  expect(rows[0]).not.toContain('opening');
+  expect(rows[0]).not.toContain('reconciliation');
   expect(csv).toContain('Saturday market');
   expect(csv).toContain('Daily card');
 });
 
 test('@claim:encrypted-backup exports a password-encrypted demo pack', async ({ page }) => {
+  const origins = new Set<string>();
+  page.on('request', request => origins.add(new URL(request.url()).origin));
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Backup' }).click();
   await page.getByLabel('New backup password').fill('demo-safe-password');
@@ -242,6 +272,22 @@ test('@claim:encrypted-backup exports a password-encrypted demo pack', async ({ 
   expect(contents).toContain('pocket-reconcile-encrypted');
   expect(contents).not.toContain('Weekend cash');
   expect(contents).not.toContain('Saturday market');
+  expect([...origins]).toEqual([new URL(page.url()).origin]);
+  const storedText = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('demo:pocket-reconcile');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const values = await Promise.all([...database.objectStoreNames].map(store => new Promise<unknown[]>((resolve, reject) => {
+      const request = database.transaction(store).objectStore(store).getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    })));
+    database.close();
+    return JSON.stringify({ localStorage: { ...localStorage }, values });
+  });
+  expect(storedText).not.toContain('demo-safe-password');
 });
 
 test('@claim:local-records keeps the demo flow on the product origin with no bank login', async ({ page }) => {
@@ -249,8 +295,12 @@ test('@claim:local-records keeps the demo flow on the product origin with no ban
   page.on('request', request => origins.add(new URL(request.url()).origin));
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Checks' }).click();
-  await page.getByRole('button', { name: 'Ledger' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByLabel('Paper tone').selectOption('dark');
+  await page.locator('button[data-nav="ledger"]').click();
   expect([...origins]).toEqual([new URL(page.url()).origin]);
+  await expect.poll(() => page.evaluate(async () => (await indexedDB.databases()).map(item => item.name))).toContain('demo:pocket-reconcile');
+  expect(await page.evaluate(() => localStorage.getItem('demo:pr:theme'))).toBe('dark');
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });
 
@@ -262,4 +312,169 @@ test('@claim:exact-decimals keeps the accepted maximum decimal amount exact in d
   await page.getByLabel('Balance right now').fill('90071992547409.91');
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByText('$90,071,992,547,409.91', { exact: true }).first()).toBeVisible();
+});
+
+test('@claim:core-ledger records an entry and closes an exact balance check', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByLabel('Amount INR').fill('12.50');
+  await page.getByLabel('Note').fill('Tea and snacks');
+  await page.getByRole('button', { name: 'Add to ledger' }).click();
+  await expect(page.getByText('₹92.00', { exact: true }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Start balance check' }).click();
+  await page.getByRole('button', { name: 'Close this check' }).click();
+  await page.getByRole('button', { name: 'Checks' }).click();
+  await expect(page.getByText('₹92.00 observed')).toBeVisible();
+});
+
+test('@claim:csv-import imports a valid transaction into its named account', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.locator('#csv-import').setInputFiles({
+    name: 'one-entry.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('date,account,amount,note\n2026-08-28,Weekend cash,1.05,Found coin')
+  });
+  await expect(page.getByRole('status')).toContainText('1 entry imported.');
+  await page.locator('button[data-nav="ledger"]').click();
+  await expect(page.getByText('Found coin', { exact: true })).toBeVisible();
+  await expect(page.getByText('₹105.55', { exact: true }).first()).toBeVisible();
+});
+
+test('@claim:atomic-csv-import rejects every row when any imported row is invalid', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.locator('#csv-import').setInputFiles({
+    name: 'mixed.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('date,account,amount,note\n2026-08-28,Weekend cash,5.00,Must not import\n2026-02-31,Weekend cash,-1.00,Impossible')
+  });
+  await expect(page.getByRole('status')).toContainText('Row 3: use a date like 2026-08-28.');
+  await page.locator('button[data-nav="ledger"]').click();
+  await expect(page.getByText('Must not import', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('2 total')).toBeVisible();
+});
+
+test('@claim:backup-restore restores every account, entry, and check from an encrypted backup', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.getByLabel('New backup password').fill('complete-demo-password');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download encrypted backup' }).click();
+  const backupPath = await (await downloadPromise).path();
+  expect(backupPath).not.toBeNull();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Erase all local data' }).click();
+  await page.locator('#confirm-delete').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.locator('#backup-import').setInputFiles(backupPath!);
+  await page.getByLabel('Backup password', { exact: true }).fill('complete-demo-password');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Replace local ledger' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Weekend cash');
+  await expect(page.locator('#account-select option')).toHaveCount(2);
+  await expect(page.getByText('Saturday market', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Checks' }).click();
+  await expect(page.getByText('₹104.50 observed')).toBeVisible();
+});
+
+test('@claim:backup-password-recovery rejects a wrong password and accepts only the backup password', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.getByLabel('New backup password').fill('right-demo-password');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download encrypted backup' }).click();
+  const backupPath = await (await downloadPromise).path();
+  await page.locator('#backup-import').setInputFiles(backupPath!);
+  await page.getByLabel('Backup password', { exact: true }).fill('wrong-password');
+  await page.getByRole('button', { name: 'Replace local ledger' }).click();
+  await expect(page.locator('#backup-error')).toContainText('Check the password and file.');
+  await page.getByLabel('Backup password', { exact: true }).fill('right-demo-password');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Replace local ledger' }).click();
+  await expect(page.getByRole('status')).toContainText('Encrypted backup restored.');
+});
+
+test('@claim:erase-ledger erases every local ledger record after confirmation', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Erase all local data' }).click();
+  await expect(page.getByText('2 accounts, 3 entries, and 1 checks will be permanently deleted')).toBeVisible();
+  await page.locator('#confirm-delete').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
+  const counts = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('demo:pocket-reconcile');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const counts = await Promise.all(['accounts', 'transactions', 'reconciliations'].map(store => new Promise<number>((resolve, reject) => {
+      const request = database.transaction(store).objectStore(store).count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    })));
+    database.close();
+    return counts;
+  });
+  expect(counts).toEqual([0, 0, 0]);
+});
+
+test('@claim:discrepancy-note requires and records a note when balances differ', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Start balance check' }).click();
+  await page.getByLabel('Counted balance INR').fill('103.50');
+  await page.getByRole('button', { name: 'Close this check' }).click();
+  await expect(page.locator('#reconcile-error')).toContainText('Add a note explaining this difference');
+  await expect(page.getByLabel('Discrepancy note')).toBeFocused();
+  await page.getByLabel('Discrepancy note').fill('One rupee used for parking');
+  await page.getByRole('button', { name: 'Close this check' }).click();
+  await page.getByRole('button', { name: 'Checks' }).click();
+  await expect(page.getByText('One rupee used for parking', { exact: false })).toBeVisible();
+});
+
+test('browser Back restores section URL, title, focus, and announcement', async ({ page }) => {
+  await page.goto('/demo?screen=backup');
+  await expect(page.getByRole('heading', { level: 1, name: 'Pack and restore' })).toBeVisible();
+  await expect(page).toHaveTitle('Backup — Pocket Reconcile');
+  await page.reload();
+  await expect(page).toHaveURL(/\/demo\?screen=backup$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Pack and restore' })).toBeVisible();
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Checks' }).click();
+  await expect(page).toHaveURL(/\/demo\?screen=checks$/);
+  await expect(page).toHaveTitle('Checks — Pocket Reconcile');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await expect(page).toHaveURL(/\/demo\?screen=settings$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/demo\?screen=checks$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Balance checks' })).toBeFocused();
+  await expect(page.locator('#route-status')).toHaveText('Checks screen');
+  await page.goForward();
+  await expect(page.getByRole('heading', { level: 1, name: 'Notebook settings' })).toBeFocused();
+});
+
+test('landing has the required sequence and every route has release metadata', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 2, name: 'How it works' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'What it does not do' })).toBeVisible();
+  await expect(page.getByText('Built by Param Factory')).toBeVisible();
+  for (const path of ['/', '/demo', '/privacy/', '/terms/', '/404.html']) {
+    await page.goto(path);
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /social-card\.jpg$/);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+    await expect(page.getByText('Built by Param Factory')).toBeVisible();
+    await expect(page.getByText('Version 1.0.1')).toBeVisible();
+  }
+  const socialSize = await page.evaluate(async () => {
+    const image = await createImageBitmap(await (await fetch('/assets/social-card.jpg')).blob());
+    return [image.width, image.height];
+  });
+  expect(socialSize).toEqual([1200, 630]);
+});
+
+test('explains excess currency precision instead of calling it zero', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByLabel('Amount INR').fill('0.001');
+  await page.getByLabel('Note').fill('Precision probe');
+  await page.getByRole('button', { name: 'Add to ledger' }).click();
+  await expect(page.locator('#amount-error')).toHaveText('INR supports 2 decimal places. Round the amount and try again.');
 });

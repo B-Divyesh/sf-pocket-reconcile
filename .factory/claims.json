@@ -1,42 +1,105 @@
 [
   {
     "id": "demo-sandbox",
-    "claim": "Sample data never mixes with personal records.",
+    "claim": "The sample ledger has two accounts, three entries, and one balance check; reset restores it and exit discards it without mixing with personal records.",
     "where": "Home action, demo banner, README",
     "test": "npm run test:claims -- --grep @claim:demo-sandbox",
-    "sandbox": "Fresh browser context at /demo; assert sample records, demo: storage namespace, and discard-on-exit."
+    "sandbox": "Fresh browser context at /demo; assert sample shape, demo storage namespace, reset, and discard-on-exit."
+  },
+  {
+    "id": "core-ledger",
+    "claim": "Records an entry and closes an exact balance check.",
+    "where": "Home, README",
+    "test": "npm run test:claims -- --grep @claim:core-ledger",
+    "sandbox": "Fresh /demo ledger; add an entry, close a matching check, and assert its history."
+  },
+  {
+    "id": "discrepancy-note",
+    "claim": "Requires and records a note when a balance check differs.",
+    "where": "Home, README",
+    "test": "npm run test:claims -- --grep @claim:discrepancy-note",
+    "sandbox": "Fresh /demo ledger; submit a different balance without and then with a note, and assert history."
   },
   {
     "id": "offline-reload",
     "claim": "Works offline after the first visit.",
-    "where": "Home facts, README",
+    "where": "Home facts, privacy policy, README",
     "test": "npm run test:claims -- --grep @claim:offline-reload",
     "sandbox": "Fresh browser context at /demo, wait for service worker, go offline, and reload."
   },
   {
     "id": "csv-export",
-    "claim": "Exports ledger entries as CSV.",
-    "where": "Backup screen, README",
+    "claim": "Exports every ledger entry as CSV without opening balances or balance-check history.",
+    "where": "Backup screen, privacy policy, README",
     "test": "npm run test:claims -- --grep @claim:csv-export",
     "sandbox": "Fresh /demo ledger; download CSV and assert the header plus one row per sample transaction."
   },
   {
+    "id": "csv-import",
+    "claim": "Imports valid CSV transaction rows into named accounts.",
+    "where": "Backup screen, privacy policy, README",
+    "test": "npm run test:claims -- --grep @claim:csv-import",
+    "sandbox": "Fresh /demo ledger; import one row and assert its note and exact changed balance."
+  },
+  {
+    "id": "atomic-csv-import",
+    "claim": "Validates every CSV row before saving any imported entry.",
+    "where": "README",
+    "test": "npm run test:claims -- --grep @claim:atomic-csv-import",
+    "sandbox": "Fresh /demo ledger; import one valid and one invalid row, then assert neither was saved."
+  },
+  {
     "id": "encrypted-backup",
-    "claim": "Exports a password-encrypted backup.",
-    "where": "Backup screen, README",
+    "claim": "Encrypts the backup on this device without ledger cleartext, stored passwords, or third-party requests.",
+    "where": "Backup screen, privacy policy, README",
     "test": "npm run test:claims -- --grep @claim:encrypted-backup",
     "sandbox": "Fresh /demo ledger; download a password backup and assert its encrypted envelope omits sample cleartext."
   },
   {
+    "id": "backup-restore",
+    "claim": "A full encrypted backup restores all accounts, entries, and balance checks.",
+    "where": "Backup screen, README",
+    "test": "npm run test:claims -- --grep @claim:backup-restore",
+    "sandbox": "Fresh /demo ledger; export, erase, restore, and assert both accounts, an entry, and a check."
+  },
+  {
+    "id": "backup-password-recovery",
+    "claim": "Only the backup password can open an encrypted backup; there is no recovery key.",
+    "where": "Backup screen, privacy policy, README",
+    "test": "npm run test:claims -- --grep @claim:backup-password-recovery",
+    "sandbox": "Fresh /demo ledger; reject a wrong password and restore with the original password."
+  },
+  {
+    "id": "entry-delete",
+    "claim": "Deletes an individual entry and offers Undo.",
+    "where": "Ledger, privacy policy, README",
+    "test": "npm run test:claims -- --grep @claim:entry-delete",
+    "sandbox": "Fresh /demo ledger; create, delete, undo, and assert the entry and balance return."
+  },
+  {
+    "id": "erase-ledger",
+    "claim": "Erases all accounts, entries, and checks from this browser after confirmation.",
+    "where": "Settings, privacy policy, README",
+    "test": "npm run test:claims -- --grep @claim:erase-ledger",
+    "sandbox": "Fresh /demo ledger; confirm erase and inspect all three IndexedDB stores."
+  },
+  {
+    "id": "pwa-install-update",
+    "claim": "Installs as a standalone PWA and shows an action when an update is ready.",
+    "where": "README",
+    "test": "npm run test:claims -- --grep @claim:pwa-install-update",
+    "sandbox": "Fresh /demo context; inspect the manifest and mock an installed worker update through the visible reload action."
+  },
+  {
     "id": "local-records",
-    "claim": "Records remain in this browser; no bank login is required.",
-    "where": "Home facts, privacy policy, README",
+    "claim": "Records remain in this browser; no bank login, sync, third-party font, or third-party script is required.",
+    "where": "Home, privacy policy, terms, README",
     "test": "npm run test:claims -- --grep @claim:local-records",
-    "sandbox": "Fresh /demo flow; assert only product-origin requests and no password/login input."
+    "sandbox": "Fresh /demo flow; assert only product-origin requests, local IndexedDB, and no login input."
   },
   {
     "id": "exact-decimals",
-    "claim": "Keeps supported money amounts in exact whole cents.",
+    "claim": "Keeps supported money amounts in exact whole minor units.",
     "where": "README",
     "test": "npm run test:claims -- --grep @claim:exact-decimals",
     "sandbox": "Fresh /demo ledger; create the maximum accepted USD amount and assert every cent is displayed."

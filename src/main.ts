@@ -3,7 +3,7 @@ import type { Account, AppData, Currency, Reconciliation, Transaction } from './
 import { configureDatabase, db, discardDatabase, eraseData, loadData, replaceData } from './db';
 import { accountNameKey, exportCsv, parseCsv } from './csv';
 import { decryptBackup, encryptBackup } from './backup';
-import { formatMoney, moneyInput, parseMoney } from './money';
+import { formatMoney, fractionDigits, moneyInput, parseMoney } from './money';
 import { sampleData } from './demo';
 
 type Screen = 'ledger' | 'history' | 'backup' | 'settings';
@@ -22,6 +22,7 @@ let deletedTransaction: Transaction | null = null;
 let toastTimer = 0;
 
 const currencies: Currency[] = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
+const screenLabels: Record<Screen, string> = { ledger: 'Ledger', history: 'Checks', backup: 'Backup', settings: 'Settings' };
 const today = () => new Date().toISOString().slice(0, 10);
 const h = (value: unknown) => String(value ?? '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char] ?? char);
 const dateLabel = (value: string | number) => new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(typeof value === 'number' ? value : new Date(`${value}T12:00:00`));
@@ -63,9 +64,12 @@ function download(name: string, content: string, type: string): void {
 
 function shell(): void {
   const online = navigator.onLine;
+  document.title = screen === 'ledger'
+    ? (demoMode ? 'Demo — Pocket Reconcile' : 'Pocket Reconcile — private, offline balance checks')
+    : `${screenLabels[screen]} — Pocket Reconcile`;
   app.innerHTML = `
     <header class="app-header">
-      <a class="brand" href="#ledger" data-nav="ledger" aria-label="Pocket Reconcile, ledger">
+      <a class="brand" href="${demoMode ? '/demo' : '/'}" data-nav="ledger" aria-label="Pocket Reconcile, ledger">
         <svg aria-hidden="true" viewBox="0 0 42 42"><path d="M10 34C10 20 18 8 34 7c-1 16-9 25-24 27Z"/><path d="M10 34c7-9 13-15 22-23M20 24l-1-8m6 2 7 1"/></svg>
         <span>Pocket<br><em>Reconcile</em></span>
       </a>
@@ -84,8 +88,9 @@ function shell(): void {
     <main id="main" tabindex="-1">${renderScreen()}</main>
     <footer class="app-footer">
       <p>Private balance checks for a few accounts.</p>
-      <p><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><span>Generated botanical artwork</span></p>
+      <p><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><span>Built by Param Factory</span><span>Version 1.0.1</span><span>Generated botanical artwork</span></p>
     </footer>
+    <div id="route-status" class="visually-hidden" aria-live="polite"></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     ${accountDialog()}
     ${deleteDialog()}
@@ -116,6 +121,15 @@ function renderLedger(): string {
         <ul class="trust-list" aria-label="Product facts"><li>Works offline after first visit</li><li>No bank login</li><li>Export CSV or encrypted backup</li></ul>
       </div>
       <figure class="hero-figure"><picture><source srcset="/assets/pressed-ledger-384.webp 384w, /assets/pressed-ledger.webp 768w" sizes="(max-width: 760px) calc(100vw - 48px), 465px" type="image/webp"><img src="/assets/pressed-ledger.jpg" width="768" height="512" alt="An open field notebook with a fern aligned across two ledger columns" fetchpriority="high" decoding="async"></picture><figcaption>Observe · record · reconcile</figcaption></figure>
+    </section>
+    <section class="landing-process" aria-labelledby="how-title">
+      <p class="eyebrow">Three field notes</p><h2 id="how-title">How it works</h2>
+      <ol><li><strong>Set the starting balance.</strong><span>Create each cash, card, or wallet account by entering what it holds now.</span></li><li><strong>Record each change.</strong><span>Add money spent or received with a date and a short note.</span></li><li><strong>Count and compare.</strong><span>Enter the balance you see. Add a note when the totals differ.</span></li></ol>
+    </section>
+    <section class="landing-limits" aria-labelledby="limits-title">
+      <p class="eyebrow">Clear limits</p><h2 id="limits-title">What it does not do</h2>
+      <p>Pocket Reconcile does not connect to banks, sync records between devices, or give financial advice.</p>
+      <p>Your browser holds the working ledger. Export a backup before clearing browser data or moving devices.</p>
     </section>`;
 
   const account = selectedAccount();
@@ -205,8 +219,9 @@ function deleteDialog(): string {
 }
 
 function bindEvents(): void {
-  document.querySelectorAll<HTMLElement>('[data-nav]').forEach(element => element.addEventListener('click', () => {
-    screen = element.dataset.nav as Screen; reconcileOpen = false; history.replaceState({}, '', `#${screen}`); shell(); document.querySelector<HTMLElement>('#main')?.focus();
+  document.querySelectorAll<HTMLElement>('[data-nav]').forEach(element => element.addEventListener('click', event => {
+    event.preventDefault();
+    navigateTo(element.dataset.nav as Screen);
   }));
   document.querySelector<HTMLSelectElement>('#account-select')?.addEventListener('change', event => { selectedId = (event.target as HTMLSelectElement).value; shell(); });
   document.querySelector<HTMLFormElement>('#account-form')?.addEventListener('submit', event => void addAccount(event));
@@ -262,9 +277,17 @@ async function addTransaction(event: SubmitEvent): Promise<void> {
   const account = selectedAccount(); if (!account) return;
   const form = event.currentTarget as HTMLFormElement;
   const values = new FormData(form);
-  let amount = parseMoney(String(values.get('amount') ?? ''), account.currency);
+  const amountText = String(values.get('amount') ?? '');
+  let amount = parseMoney(amountText, account.currency);
   const error = document.querySelector('#amount-error');
-  if (amount === null || amount === 0) { if (error) error.textContent = 'Enter an amount other than zero.'; return; }
+  if (amount === null) {
+    const decimals = amountText.replaceAll(',', '').split('.')[1]?.length ?? 0;
+    if (error) error.textContent = decimals > fractionDigits(account.currency)
+      ? `${account.currency} supports ${fractionDigits(account.currency)} decimal ${fractionDigits(account.currency) === 1 ? 'place' : 'places'}. Round the amount and try again.`
+      : `Enter a valid ${account.currency} amount.`;
+    return;
+  }
+  if (amount === 0) { if (error) error.textContent = 'Enter an amount other than zero.'; return; }
   amount = Math.abs(amount) * (values.get('direction') === 'spent' ? -1 : 1);
   const transaction: Transaction = { id: crypto.randomUUID(), accountId: account.id, amountMinor: amount, note: String(values.get('note') ?? '').trim(), occurredOn: String(values.get('date')), createdAt: Date.now() };
   if (!transaction.note) { if (error) error.textContent = 'Add a short note so you can identify this entry.'; return; }
@@ -371,13 +394,13 @@ function toggleTheme(): void {
   localStorage.setItem(storageKey('pr:theme'), resolvedDark ? 'light' : 'dark'); applyTheme(); shell();
 }
 
-async function resetDemo(): Promise<void> {
+async function resetDemo(returnToLedger = true): Promise<void> {
   const reset = sampleData();
   await replaceData(reset);
   data = reset;
   selectedId = reset.accounts[0]?.id ?? null;
   localStorage.setItem(storageKey('pr:selected-account'), selectedId ?? '');
-  screen = 'ledger';
+  if (returnToLedger) screen = 'ledger';
   reconcileOpen = false;
   shell();
   announce('Sample ledger reset.');
@@ -389,15 +412,49 @@ function updateConnection(): void {
   announce(navigator.onLine ? 'Connection restored. Your ledger remains local.' : 'You’re offline. The ledger and backups still work.');
 }
 
+function screenFromLocation(): Screen {
+  const query = new URL(location.href).searchParams.get('screen');
+  if (query === 'checks') return 'history';
+  if (query === 'backup' || query === 'settings' || query === 'ledger') return query;
+  const hash = location.hash.slice(1);
+  return hash === 'history' || hash === 'backup' || hash === 'settings' ? hash : 'ledger';
+}
+
+function screenUrl(next: Screen): string {
+  const base = demoMode ? '/demo' : '/';
+  const route = next === 'history' ? 'checks' : next;
+  return next === 'ledger' ? base : `${base}?screen=${route}`;
+}
+
+function focusScreen(announceChange: boolean): void {
+  const heading = document.querySelector<HTMLElement>('main h1');
+  heading?.setAttribute('tabindex', '-1');
+  heading?.focus();
+  if (announceChange) {
+    const status = document.querySelector<HTMLElement>('#route-status');
+    if (status) status.textContent = `${screenLabels[screen]} screen`;
+  }
+}
+
+function navigateTo(next: Screen): void {
+  if (screen !== next || location.pathname + location.search !== screenUrl(next)) {
+    history.pushState({ screen: next }, '', screenUrl(next));
+  }
+  screen = next;
+  reconcileOpen = false;
+  shell();
+  focusScreen(true);
+}
+
 async function start(): Promise<void> {
   configureDatabase(demoMode); applyTheme();
-  const hash = location.hash.slice(1) as Screen; if (['ledger', 'history', 'backup', 'settings'].includes(hash)) screen = hash;
+  screen = screenFromLocation();
   try { data = await loadData(); shell(); } catch {
     app.innerHTML = `<main id="main" class="fatal"><h1>Couldn’t open the local ledger.</h1><p>Your browser blocked IndexedDB. Allow site storage or try a non-private window, then reload.</p><button id="retry-storage" type="button">Try again</button></main>`;
     document.querySelector<HTMLButtonElement>('#retry-storage')?.addEventListener('click', () => location.reload());
     return;
   }
-  if (demoMode && !data.accounts.length) await resetDemo();
+  if (demoMode && !data.accounts.length) await resetDemo(false);
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
@@ -408,6 +465,12 @@ async function start(): Promise<void> {
 
 window.addEventListener('online', updateConnection);
 window.addEventListener('offline', updateConnection);
+window.addEventListener('popstate', () => {
+  screen = screenFromLocation();
+  reconcileOpen = false;
+  shell();
+  focusScreen(true);
+});
 app.addEventListener('click', event => {
   if (!(event.target instanceof Element)) return;
   const control = event.target.closest<HTMLElement>('[data-action]');
