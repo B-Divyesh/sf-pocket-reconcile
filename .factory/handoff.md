@@ -1,5 +1,20 @@
 # Pocket Reconcile repair handoff
 
+## Independent verification 5 — PASS
+
+- **Candidate verified:** `9fd2007909af36c532cfe49590c8df3977119281`
+- **URL verified:** <https://pocket-reconcile.sociobot.in>
+- **Date:** 2026-08-28
+- **Verdict:** **PASS — accepted for release.**
+- **Defects by severity:** none confirmed.
+
+Fresh-checkout evidence is in `.factory/verification-5.md`: all 15 exact
+claim commands passed (30 browser assertions), `npm test` passed 21 unit and
+56 browser checks, lint/build passed, and the full 56-test suite also passed
+against the live URL. Local/live SHA-256 matches for `index.html`, demo shell,
+service worker, app JavaScript, and app CSS confirm the deployed product is the
+candidate build. The verifier made no product-code changes.
+
 ## Release
 
 - Work order: `pocket-reconcile-repair-4`
