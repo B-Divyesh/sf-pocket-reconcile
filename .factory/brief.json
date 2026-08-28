@@ -1,0 +1,9 @@
+{
+  "slug": "pocket-reconcile",
+  "title": "Pocket Reconcile",
+  "user": "A privacy-minded budgeter who wants to reconcile cash, cards, and a few manual transactions from a phone in two minutes.",
+  "smallest_useful_product": "Local accounts, balance snapshot, quick transactions, count-to-balance reconcile, discrepancy note, and CSV import/export.",
+  "artifact_class": "pwa-offline",
+  "monetization": "one-time",
+  "constraints": "No bank credentials or financial advice; encrypted local export option; accurate decimal currency arithmetic and transparent backup recovery."
+}

@@ -1,0 +1,9 @@
+{
+  "generator": "/opt/fleet/lib/gen-image.sh",
+  "deployment": "factory-image",
+  "date": "2026-08-28",
+  "size": "1536x1024",
+  "quality": "high",
+  "prompt": "Create an original landscape editorial illustration for an offline ledger web app. Top-down view of a small open botanical notebook on warm cream paper. Two tidy columns made only from thin ruled lines. A single green fern leaf arranged diagonally across the notebook and one small round brass token nearby. Traditional naturalist field-guide style with ink, paper grain, linen thread, soft north-window light, forest green, sage, ochre and parchment palette. Calm, precise, minimal composition with clear negative space and clean cropping. No people, no hands, no readable words, no numbers, no currency, no cards, no devices, no logos, no brands, no watermark, no neon, no gradients, no glossy 3D, no extra objects.",
+  "review": "Selected candidate reviewed for malformed foliage, text artifacts, seams, unintended marks and brands. No defects found."
+}
