@@ -1,5 +1,26 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+
+async function ledgerSnapshot(page: Page, databaseName: string): Promise<string> {
+  return page.evaluate(async name => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(name);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const stores = await Promise.all([...database.objectStoreNames].sort().map(store => new Promise<[string, unknown[]]>((resolve, reject) => {
+      const request = database.transaction(store).objectStore(store).getAll();
+      request.onsuccess = () => resolve([store, request.result]);
+      request.onerror = () => reject(request.error);
+    })));
+    database.close();
+    const preferences = Object.keys(localStorage)
+      .filter(key => !key.startsWith('demo:'))
+      .sort()
+      .map(key => [key, localStorage.getItem(key)]);
+    return JSON.stringify({ stores, preferences });
+  }, databaseName);
+}
 
 test('creates an account, records an entry, and reconciles exactly', async ({ page }) => {
   await page.goto('/');
@@ -125,7 +146,7 @@ test('@claim:pwa-install-update exposes an installable manifest and applies an u
   expect(manifest.icons).toHaveLength(3);
   const manifestCheck = await (await context.newCDPSession(page)).send('Page.getAppManifest');
   expect(manifestCheck.errors).toEqual([]);
-  await expect(page.getByRole('status')).toContainText('A fresh field guide is ready.');
+  await expect(page.getByRole('status')).toContainText('An app update is ready.');
   await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
   const before = documentRequests;
   await Promise.all([
@@ -149,6 +170,32 @@ test('keeps every advertised mobile link target at least 44 by 44 CSS pixels', a
     const box = await target.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(44);
     expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('keeps the first screen readable on mobile and gives both desktop actions equal height', async ({ page }) => {
+  await page.goto('/');
+  const viewport = page.viewportSize();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const primary = page.getByRole('link', { name: 'Try it with sample data' });
+  const secondary = page.getByRole('button', { name: 'Create my first account' });
+  await expect(primary).toHaveAttribute('href', '/?demo=1');
+  const primaryBox = await primary.boundingBox();
+  const secondaryBox = await secondary.boundingBox();
+  expect(Math.abs((primaryBox?.height ?? 0) - (secondaryBox?.height ?? 0))).toBeLessThanOrEqual(1);
+  if ((viewport?.width ?? 0) <= 390) {
+    for (const target of [
+      page.getByRole('heading', { level: 1 }),
+      page.getByText('For privacy-minded budgeters who track a few accounts from a phone.'),
+      primary,
+      secondary,
+      page.getByText('Works offline after first visit'),
+      page.getByText('No bank login'),
+      page.getByText('Export CSV or encrypted backup')
+    ]) {
+      const box = await target.boundingBox();
+      expect((box?.y ?? 10000) + (box?.height ?? 0)).toBeLessThanOrEqual(viewport?.height ?? 0);
+    }
   }
 });
 
@@ -190,9 +237,19 @@ test('first-visit app shell opens offline with the browser HTTP cache disabled',
   await expect(page.getByText('Offline · ready')).toBeVisible();
 });
 
-test('@claim:demo-sandbox opens realistic sample data in its own namespace and discards it on exit', async ({ page }) => {
+test('@claim:demo-sandbox isolates, resets, and fully discards sample state without changing personal records', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Create my first account' }).click();
+  await page.getByLabel('Account name').fill('Real sentinel');
+  await page.getByLabel('Balance right now').fill('73.25');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.evaluate(() => localStorage.setItem('pr:personal-probe', 'keep-exactly'));
+  const personalBefore = await ledgerSnapshot(page, 'pocket-reconcile');
+
   await page.goto('/?demo=1');
   await expect(page).toHaveURL(/\?demo=1$/);
+  await expect(page).toHaveTitle('Demo — Pocket Reconcile');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/demo$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Weekend cash' })).toBeVisible();
   await expect(page.getByText('Saturday market', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Demo controls')).toContainText('Demo — sample data, nothing is saved.');
@@ -201,7 +258,8 @@ test('@claim:demo-sandbox opens realistic sample data in its own namespace and d
     keys: Object.keys(localStorage)
   }));
   expect(namespaces.databases).toContain('demo:pocket-reconcile');
-  expect(namespaces.keys.every(key => key.startsWith('demo:'))).toBe(true);
+  expect(namespaces.keys.some(key => key.startsWith('demo:'))).toBe(true);
+  expect(namespaces.keys).toContain('pr:personal-probe');
   await expect(page.locator('#account-select option')).toHaveCount(2);
   await page.getByLabel('Amount INR').fill('1.00');
   await page.getByLabel('Note').fill('Temporary demo entry');
@@ -224,10 +282,21 @@ test('@claim:demo-sandbox opens realistic sample data in its own namespace and d
     return counts;
   });
   expect(resetCounts).toEqual([2, 3, 1]);
+  await page.getByLabel('Amount INR').fill('2.00');
+  await page.getByLabel('Note').fill('Discard with demo');
+  await page.getByRole('button', { name: 'Add to ledger' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByLabel('Paper tone').selectOption('dark');
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('demo:')).sort())).toEqual([
+    'demo:pr:selected-account',
+    'demo:pr:theme'
+  ]);
   await page.getByRole('button', { name: 'Start for real' }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Real sentinel');
   await expect.poll(() => page.evaluate(async () => (await indexedDB.databases()).map(item => item.name))).not.toContain('demo:pocket-reconcile');
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('demo:')))).toEqual([]);
+  expect(await ledgerSnapshot(page, 'pocket-reconcile')).toBe(personalBefore);
 });
 
 test('@claim:offline-reload works offline after the first demo visit', async ({ page, context }) => {
@@ -292,6 +361,19 @@ test('@claim:encrypted-backup exports a password-encrypted demo pack', async ({ 
   expect(storedText).not.toContain('demo-safe-password');
 });
 
+test('keeps restore controls hidden until a backup file is chosen', async ({ page }) => {
+  await page.goto('/demo?screen=backup');
+  await expect(page.getByLabel('Backup password', { exact: true })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Replace local ledger' })).toBeHidden();
+  await page.locator('#backup-import').setInputFiles({
+    name: 'restore.pocket',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{}')
+  });
+  await expect(page.getByLabel('Backup password', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Replace local ledger' })).toBeVisible();
+});
+
 test('@claim:local-records keeps the demo flow on the product origin with no bank login', async ({ page }) => {
   const origins = new Set<string>();
   page.on('request', request => origins.add(new URL(request.url()).origin));
@@ -306,14 +388,43 @@ test('@claim:local-records keeps the demo flow on the product origin with no ban
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });
 
-test('@claim:exact-decimals keeps the accepted maximum decimal amount exact in demo mode', async ({ page }) => {
+test('@claim:exact-decimals stores every supported currency in exact smallest units', async ({ page }) => {
   await page.goto('/demo');
-  await page.getByRole('button', { name: 'Add account' }).click();
-  await page.getByLabel('Account name').fill('Maximum wallet');
-  await page.getByLabel('Currency').selectOption('USD');
-  await page.getByLabel('Balance right now').fill('90071992547409.91');
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByText('$90,071,992,547,409.91', { exact: true }).first()).toBeVisible();
+  const cases = [
+    ['INR', '123.45', 12345],
+    ['USD', '90071992547409.91', Number.MAX_SAFE_INTEGER],
+    ['EUR', '123.45', 12345],
+    ['GBP', '123.45', 12345],
+    ['CAD', '123.45', 12345],
+    ['AUD', '123.45', 12345],
+    ['JPY', '123', 123]
+  ] as const;
+  for (const [currency, amount] of cases) {
+    await page.getByRole('button', { name: 'Add account' }).click();
+    await page.getByLabel('Account name').fill(`${currency} exact`);
+    await page.getByLabel('Currency').selectOption(currency);
+    await page.getByLabel('Balance right now').fill(amount);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: `${currency} exact` })).toBeVisible();
+    if (currency === 'USD') {
+      await expect(page.getByText('$90,071,992,547,409.91', { exact: true }).first()).toBeVisible();
+    }
+  }
+  const stored = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('demo:pocket-reconcile');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const accounts = await new Promise<Array<{ currency: string; openingMinor: number }>>((resolve, reject) => {
+      const request = database.transaction('accounts').objectStore('accounts').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return Object.fromEntries(accounts.filter(account => account.currency !== 'INR' || account.openingMinor === 12345).map(account => [account.currency, account.openingMinor]));
+  });
+  for (const [currency, , minor] of cases) expect(stored[currency]).toBe(minor);
 });
 
 test('@claim:core-ledger records an entry and closes an exact balance check', async ({ page }) => {
@@ -448,11 +559,11 @@ test('@claim:discrepancy-note requires and records a note when balances differ',
 
 test('browser Back restores section URL, title, focus, and announcement', async ({ page }) => {
   await page.goto('/demo?screen=backup');
-  await expect(page.getByRole('heading', { level: 1, name: 'Pack and restore' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Back up and restore' })).toBeVisible();
   await expect(page).toHaveTitle('Backup — Pocket Reconcile');
   await page.reload();
   await expect(page).toHaveURL(/\/demo\?screen=backup$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Pack and restore' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Back up and restore' })).toBeVisible();
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Checks' }).click();
   await expect(page).toHaveURL(/\/demo\?screen=checks$/);
@@ -464,7 +575,7 @@ test('browser Back restores section URL, title, focus, and announcement', async 
   await expect(page.getByRole('heading', { level: 1, name: 'Balance checks' })).toBeFocused();
   await expect(page.locator('#route-status')).toHaveText('Checks screen');
   await page.goForward();
-  await expect(page.getByRole('heading', { level: 1, name: 'Notebook settings' })).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ledger settings' })).toBeFocused();
 });
 
 test('landing has the required sequence and every route has release metadata', async ({ page }) => {
@@ -472,11 +583,26 @@ test('landing has the required sequence and every route has release metadata', a
   await expect(page.getByRole('heading', { level: 2, name: 'How it works' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'What it does not do' })).toBeVisible();
   await expect(page.getByText('Built by Param Factory')).toBeVisible();
-  for (const path of ['/', '/demo', '/privacy/', '/terms/', '/404.html']) {
+  const routes = {
+    '/': 'Pocket Reconcile — private, offline balance checks',
+    '/demo': 'Demo — Pocket Reconcile',
+    '/privacy/': 'Privacy — Pocket Reconcile',
+    '/terms/': 'Terms — Pocket Reconcile',
+    '/404.html': 'Page not found — Pocket Reconcile',
+    '/offline.html': 'Offline — Pocket Reconcile'
+  };
+  for (const [path, title] of Object.entries(routes)) {
     await page.goto(path);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('main')).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(page).toHaveTitle(title);
     await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /social-card\.jpg$/);
     await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+    await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/icons/icon.svg');
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/apple-touch-icon.png');
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('sizes', '180x180');
     await expect(page.getByText('Built by Param Factory')).toBeVisible();
     await expect(page.getByText('Version 1.0.1')).toBeVisible();
   }
@@ -485,6 +611,11 @@ test('landing has the required sequence and every route has release metadata', a
     return [image.width, image.height];
   });
   expect(socialSize).toEqual([1200, 630]);
+  const appleTouchSize = await page.evaluate(async () => {
+    const image = await createImageBitmap(await (await fetch('/icons/apple-touch-icon.png')).blob());
+    return [image.width, image.height];
+  });
+  expect(appleTouchSize).toEqual([180, 180]);
 });
 
 test('uses the same primary route links on the ledger and legal pages', async ({ page }) => {

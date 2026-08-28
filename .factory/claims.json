@@ -4,7 +4,7 @@
     "claim": "The sample ledger has two accounts, three entries, and one balance check; reset restores it and exit discards it without mixing with personal records.",
     "where": "Home action, demo banner, README",
     "test": "npm run test:claims -- --grep @claim:demo-sandbox",
-    "sandbox": "Fresh browser context at /demo; assert sample shape, demo storage namespace, reset, and discard-on-exit."
+    "sandbox": "Fresh browser context with a seeded personal ledger; enter /?demo=1, mutate and reset sample data, exit, then assert no demo database or demo: keys and byte-for-byte unchanged personal records and preferences."
   },
   {
     "id": "core-ledger",
@@ -32,11 +32,11 @@
     "claim": "Exports every ledger entry as CSV without opening balances or balance-check history.",
     "where": "Backup screen, privacy policy, README",
     "test": "npm run test:claims -- --grep @claim:csv-export",
-    "sandbox": "Fresh /demo ledger; download CSV and assert the header plus one row per sample transaction."
+    "sandbox": "Fresh /demo ledger; download CSV and assert the header plus one row per sample entry."
   },
   {
     "id": "csv-import",
-    "claim": "Imports valid CSV transaction rows into named accounts.",
+    "claim": "Imports valid CSV entry rows into named accounts.",
     "where": "Backup screen, privacy policy, README",
     "test": "npm run test:claims -- --grep @claim:csv-import",
     "sandbox": "Fresh /demo ledger; import one row and assert its note and exact changed balance."
@@ -92,7 +92,7 @@
   },
   {
     "id": "pwa-install-update",
-    "claim": "Installs as a standalone PWA and shows an action when an update is ready.",
+    "claim": "Installs as a standalone web app and shows an action when an update is ready.",
     "where": "README",
     "test": "npm run test:claims -- --grep @claim:pwa-install-update",
     "sandbox": "Fresh /demo context; inspect the manifest and mock an installed worker update through the visible reload action."
@@ -113,9 +113,9 @@
   },
   {
     "id": "exact-decimals",
-    "claim": "Keeps supported money amounts in exact whole minor units.",
+    "claim": "Stores each supported amount in the currency's smallest unit.",
     "where": "README",
     "test": "npm run test:claims -- --grep @claim:exact-decimals",
-    "sandbox": "Fresh /demo ledger; create the maximum accepted USD amount and assert every cent is displayed."
+    "sandbox": "Fresh /demo ledger; create accounts in INR, USD, EUR, GBP, CAD, AUD, and JPY, then assert exact stored units and the maximum USD amount displayed."
   }
 ]

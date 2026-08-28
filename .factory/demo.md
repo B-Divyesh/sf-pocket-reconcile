@@ -9,7 +9,8 @@ preferences use `demo:`-prefixed local-storage keys. The real ledger continues
 to use `pocket-reconcile` and unprefixed keys. Demo mode never reads or writes
 that real namespace.
 
-The persistent demo banner exposes **Reset demo** (restores the supplied
-sample) and **Start for real** (deletes the demo database and opens the empty
-real ledger). The service worker precaches `/demo/`, so the sample can be
-reloaded offline after its first visit.
+The persistent demo banner exposes **Reset demo**, which restores the supplied
+sample and its preferences. **Start for real** deletes the demo database and
+every `demo:` preference before opening the untouched personal ledger. The
+service worker precaches `/demo/`, so the sample reloads offline after its
+first visit.

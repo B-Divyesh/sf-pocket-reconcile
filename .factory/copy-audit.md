@@ -6,9 +6,9 @@
 | Reconcile cash and card balances. | 5 | Pass |
 | For privacy-minded budgeters who track a few accounts from a phone. | 11 | Pass |
 | Try it with sample data | 5 | Pass |
-| Create my first account | 5 | Pass |
+| Create my first account | 4 | Pass |
 | The sample opens a working ledger. | 6 | Pass |
-| It never mixes with your records. | 7 | Pass |
+| It never mixes with your records. | 6 | Pass; `@claim:demo-sandbox` |
 | Works offline after first visit | 5 | Pass |
 | No bank login | 3 | Pass |
 | Export CSV or encrypted backup | 5 | Pass |
@@ -28,18 +28,19 @@
 
 No line exceeds 22 words. No banned plain-words terms occur.
 
-## README changes checked in this repair
+## README lines changed in polish round 2
 
 | Copy | Words | Result |
 | --- | ---: | --- |
-| Pocket Reconcile helps privacy-minded budgeters reconcile cash, cards, and a few manual entries from a phone. | 16 | Pass |
-| CSV entry import and export, with every row checked before import | 10 | Pass |
-| The sample ledger includes two accounts, three entries, and a completed check. | 11 | Pass |
-| Account names stay unique regardless of case or repeated spaces. | 9 | Registered claim |
-| Negative amounts are spending, and positive amounts are money received. | 10 | Registered claim |
-| Records remain in this browser. | 5 | Registered claim |
-| Generated project artwork is original to Pocket Reconcile and covered by the MIT license. | 14 | Pass |
-| Its prompt and provenance are in `.factory/design.md` and `assets/src/pressed-ledger.prompt.json`. | 11 | Pass |
+| Delete an entry with Undo, or erase the entire ledger after confirmation | 11 | Pass |
+| Installable web app, offline reload, and an update prompt | 9 | Pass |
+| It stores each supported amount in the currency’s smallest unit. | 10 | Registered `exact-decimals` claim |
+| The suite checks accessibility, keyboard use, outside network requests, updates, offline use, route history, and claims. | 15 | Pass |
+| The encrypted backup includes a format version for future restores. | 10 | Pass |
+
+No landing or changed README line exceeds 22 words. No banned marketing term
+occurs in visitor copy. Developer-only commands and internal type names are not
+visitor terminology.
 
 ## Terminology
 
@@ -51,3 +52,6 @@ No line exceeds 22 words. No banned plain-words terms occur.
 | Downloadable spreadsheet format | CSV |
 | Password-protected full export | backup |
 | Isolated realistic example | sample ledger |
+
+Application headings and empty states now use the same terms. Botanical identity
+remains in the palette, rules, leaf artwork, serif type, and paper-tone control.

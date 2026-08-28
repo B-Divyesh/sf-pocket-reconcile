@@ -18,7 +18,7 @@ async function injectServiceWorkerShell(): Promise<void> {
   const source = await readFile(new URL('public/sw.js', root), 'utf8');
   const shellFiles = [
     'index.html', 'demo/index.html', '404.html', 'offline.html', 'privacy/index.html', 'terms/index.html',
-    'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
+    'manifest.webmanifest', 'icons/icon.svg', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png',
     'icons/icon-maskable-512.png', 'assets/pressed-ledger-384.webp',
     'assets/pressed-ledger.webp', 'assets/pressed-ledger.jpg',
     ...appAssets.map(path => path.slice(1))

@@ -4,7 +4,7 @@
 
 Reconciliation is a small act of observation: count what is present, compare it with what was recorded, annotate the difference, and close the entry. Pocket Reconcile therefore feels like a well-used field notebook rather than a bank dashboard. Fine rules, specimen labels, inked numerals, clipped corners, and a single pressed-leaf illustration make the workflow calm and exact. Decoration is used only at the welcome/empty moment; the active ledger stays quiet.
 
-The interface has one light treatment and one dark treatment, selected by the device with a manual override. On phones, reference prose and secondary controls collapse while account state, expected/observed balances, and the primary action remain prominent.
+The interface has one light treatment and one dark treatment, selected by the device with a manual override. On phones, reference prose and secondary controls collapse while account state, expected/observed balances, and the primary action remain prominent. Botanical character stays visual; task copy consistently uses account, entry, balance check, ledger, and backup.
 
 ## Palette
 
@@ -37,10 +37,10 @@ The spacing unit is 4px; the working rhythm is 8/12/16/24/32/48. Content maxes a
 ## Interaction grammar
 
 - Navigation is a field-guide index. The current section is underlined and labeled.
-- Adding a transaction or account opens a sheet from the control that invoked it; focus moves to its heading and returns on close.
+- Adding an entry or account opens a sheet from the control that invoked it; focus moves to its heading and returns on close.
 - Reconcile is a three-measurement sequence: expected balance → counted balance → discrepancy. Exact matches “press” a dated reconciliation mark into the account history.
 - Immediate, restrained live-region messages confirm save, import, export, undo, online/offline, and license state.
-- Destructive operations name their target and require confirmation; a deleted transaction offers Undo.
+- Destructive operations name their target and require confirmation; a deleted entry offers Undo.
 
 ## Motion policy
 
@@ -48,7 +48,7 @@ UI transitions last 180–240ms and animate only opacity and transform: sheets l
 
 ## Original asset plan and provenance
 
-- `src/assets/pressed-ledger.webp`: a generated still-life illustration used only in the first-run/empty account introduction, supplied at explicit dimensions and kept below 300KB. It clarifies the product metaphor: observation and records brought into agreement.
+- `public/assets/pressed-ledger.webp`: a generated still-life illustration used only in the first-run/empty account introduction, supplied at explicit dimensions and kept below 300KB. It clarifies the product metaphor: observation and records brought into agreement.
 - PWA icons and interface symbols are original hand-authored SVG/geometric assets; no icon library or third-party asset is used.
 
 ### Hero prompt sheet

@@ -27,6 +27,18 @@ const today = () => new Date().toISOString().slice(0, 10);
 const h = (value: unknown) => String(value ?? '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char] ?? char);
 const dateLabel = (value: string | number) => new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(typeof value === 'number' ? value : new Date(`${value}T12:00:00`));
 
+function applyEntryMetadata(): void {
+  if (!demoMode) return;
+  const canonical = `${location.origin}/demo`;
+  document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', canonical);
+  document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.setAttribute('content', 'Demo — Pocket Reconcile');
+  document.querySelector<HTMLMetaElement>('meta[property="og:description"]')?.setAttribute('content', 'Try a working balance ledger with isolated sample data.');
+  document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.setAttribute('content', canonical);
+  document.querySelector<HTMLMetaElement>('meta[name="twitter:title"]')?.setAttribute('content', 'Demo — Pocket Reconcile');
+  document.querySelector<HTMLMetaElement>('meta[name="twitter:description"]')?.setAttribute('content', 'Try a working balance ledger with isolated sample data.');
+  document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', 'Try Pocket Reconcile with sample balance records that stay separate from your ledger.');
+}
+
 function selectedAccount(): Account | undefined {
   return data.accounts.find(account => account.id === selectedId && !account.archived) ?? data.accounts.find(account => !account.archived);
 }
@@ -84,7 +96,7 @@ function shell(): void {
         <button class="icon-button" type="button" data-action="toggle-theme" aria-label="Change color theme" title="Change color theme"><span aria-hidden="true">◐</span></button>
       </div>
     </header>
-    <nav class="index-nav" aria-label="Field guide sections">
+    <nav class="index-nav" aria-label="Ledger sections">
       ${navButton('ledger', '01', 'Ledger')}
       ${navButton('history', '02', 'Checks')}
       ${navButton('backup', '03', 'Backup')}
@@ -122,7 +134,7 @@ function renderLedger(): string {
         <p class="eyebrow">Balance checks for a few accounts</p>
         <h1 id="welcome-title">Reconcile cash and card balances.</h1>
         <p class="lede">For privacy-minded budgeters who track a few accounts from a phone.</p>
-        <div class="button-row"><a class="primary" href="/demo">Try it with sample data</a><button class="secondary" type="button" data-action="open-account">Create my first account</button></div>
+        <div class="button-row"><a class="primary" href="/?demo=1">Try it with sample data</a><button class="secondary" type="button" data-action="open-account">Create my first account</button></div>
         <p class="field-hint">The sample opens a working ledger. It never mixes with your records.</p>
         <ul class="trust-list" aria-label="Product facts"><li>Works offline after first visit</li><li>No bank login</li><li>Export CSV or encrypted backup</li></ul>
       </div>
@@ -148,12 +160,12 @@ function renderLedger(): string {
   const latest = reconciliations[0];
   return `
     <section class="ledger-head">
-      <div><p class="eyebrow">Field ledger · ${h(account.kind)}</p><h1>${h(account.name)}</h1><p class="balance-label">Expected balance</p><p class="big-balance">${h(formatMoney(expected, account.currency))}</p><p class="balance-basis">${latest ? `Since your ${h(dateLabel(latest.reconciledAt))} check` : `Opening balance plus ${transactions.length} ${transactions.length === 1 ? 'entry' : 'entries'}`}</p></div>
+      <div><p class="eyebrow">${h(account.kind[0]?.toUpperCase() + account.kind.slice(1))} account</p><h1>${h(account.name)}</h1><p class="balance-label">Expected balance</p><p class="big-balance">${h(formatMoney(expected, account.currency))}</p><p class="balance-basis">${latest ? `Since your ${h(dateLabel(latest.reconciledAt))} check` : `Opening balance plus ${transactions.length} ${transactions.length === 1 ? 'entry' : 'entries'}`}</p></div>
       <div class="account-switcher"><label for="account-select">Account</label><div><select id="account-select">${data.accounts.filter(item => !item.archived).map(item => `<option value="${item.id}" ${item.id === account.id ? 'selected' : ''}>${h(item.name)}</option>`).join('')}</select><button class="small-button" type="button" data-action="open-account">Add account</button></div></div>
     </section>
     <div class="ledger-grid">
       <section class="work-sheet" aria-labelledby="quick-title">
-        <div class="section-heading"><div><p class="eyebrow">Quick entry</p><h2 id="quick-title">What changed?</h2></div><span class="specimen-number">A–${String(transactions.length + 1).padStart(2, '0')}</span></div>
+        <div class="section-heading"><div><p class="eyebrow">Quick entry</p><h2 id="quick-title">What changed?</h2></div></div>
         <form id="transaction-form" class="transaction-form">
           <fieldset><legend>Direction</legend><div class="segmented"><label><input type="radio" name="direction" value="spent" checked><span>Spent</span></label><label><input type="radio" name="direction" value="received"><span>Received</span></label></div></fieldset>
           <div class="amount-field"><label for="amount">Amount <span>${account.currency}</span></label><input id="amount" name="amount" inputmode="decimal" autocomplete="off" required placeholder="0${account.currency === 'JPY' ? '' : '.00'}"><p id="amount-error" class="field-error" aria-live="polite"></p></div>
@@ -162,13 +174,13 @@ function renderLedger(): string {
         </form>
       </section>
       <section class="reconcile-card ${reconcileOpen ? 'is-open' : ''}" aria-labelledby="reconcile-title">
-        <div class="section-heading"><div><p class="eyebrow">Balance snapshot</p><h2 id="reconcile-title">Count what’s there</h2></div><span class="seal-mark" aria-hidden="true">✓</span></div>
+        <div class="section-heading"><div><p class="eyebrow">Balance snapshot</p><h2 id="reconcile-title">Check the current balance</h2></div><span class="seal-mark" aria-hidden="true">✓</span></div>
         ${reconcileOpen ? reconcileForm(account, expected) : `<p>Compare this ledger with the cash, card, or wallet in front of you.</p><dl class="measurement"><div><dt>Ledger says</dt><dd>${h(formatMoney(expected, account.currency))}</dd></div><div><dt>Last checked</dt><dd>${latest ? h(dateLabel(latest.reconciledAt)) : 'Not yet'}</dd></div></dl><button class="primary" type="button" data-action="start-reconcile">Start balance check</button>`}
       </section>
     </div>
     <section class="entries" aria-labelledby="entries-title">
-      <div class="section-heading"><div><p class="eyebrow">Recent specimens</p><h2 id="entries-title">Ledger entries</h2></div><span>${transactions.length} total</span></div>
-      ${transactions.length ? `<ul class="entry-list">${transactions.slice(0, 20).map(item => transactionRow(item, account)).join('')}</ul>${transactions.length > 20 ? '<p class="muted">Showing the 20 most recent entries. Your full ledger is included in exports.</p>' : ''}` : `<div class="small-empty"><span aria-hidden="true">↳</span><p><strong>The page is clear.</strong><br>Add only what changed since your opening balance.</p></div>`}
+      <div class="section-heading"><div><p class="eyebrow">Recent entries</p><h2 id="entries-title">Ledger entries</h2></div><span>${transactions.length} total</span></div>
+      ${transactions.length ? `<ul class="entry-list">${transactions.slice(0, 20).map(item => transactionRow(item, account)).join('')}</ul>${transactions.length > 20 ? '<p class="muted">Showing the 20 most recent entries. Your full ledger is included in exports.</p>' : ''}` : `<div class="small-empty"><span aria-hidden="true">↳</span><p><strong>No ledger entries yet.</strong><br>Add money spent or received above.</p></div>`}
     </section>`;
 }
 
@@ -189,35 +201,35 @@ function transactionRow(item: Transaction, account: Account): string {
 
 function renderHistory(): string {
   const checks = [...data.reconciliations].sort((a, b) => b.reconciledAt - a.reconciledAt);
-  return `<section class="page-head"><p class="eyebrow">Field guide 02</p><h1>Balance checks</h1><p class="lede">Every closed check, including the differences you chose to carry forward.</p></section>
+  return `<section class="page-head"><h1>Balance checks</h1><p class="lede">Every closed check, including the differences you chose to carry forward.</p></section>
     ${checks.length ? `<ol class="check-list">${checks.map(check => {
       const account = data.accounts.find(item => item.id === check.accountId);
       if (!account) return '';
       const matched = check.differenceMinor === 0;
       return `<li><div class="check-seal ${matched ? 'matched' : 'different'}"><span aria-hidden="true">${matched ? '✓' : 'Δ'}</span>${matched ? 'Matched' : 'Noted'}</div><div><p class="eyebrow">${h(account.name)} · ${h(dateLabel(check.reconciledAt))}</p><h2>${h(formatMoney(check.observedMinor, account.currency))} observed</h2><dl class="check-values"><div><dt>Expected</dt><dd>${h(formatMoney(check.expectedMinor, account.currency))}</dd></div><div><dt>Difference</dt><dd>${h(formatMoney(check.differenceMinor, account.currency, true))}</dd></div></dl>${check.note ? `<p class="check-note">“${h(check.note)}”</p>` : ''}</div></li>`;
-    }).join('')}</ol>` : `<div class="page-empty"><span aria-hidden="true">◎</span><h2>No checks pressed yet</h2><p>Open the Ledger and start a balance check when you have the real balance in front of you.</p><button class="primary" data-nav="ledger" type="button">Go to ledger</button></div>`}`;
+    }).join('')}</ol>` : `<div class="page-empty"><span aria-hidden="true">◎</span><h2>No balance checks yet</h2><p>Open Ledger and start a balance check.</p><button class="primary" data-nav="ledger" type="button">Go to ledger</button></div>`}`;
 }
 
 function renderBackup(): string {
   const count = data.accounts.length + data.transactions.length + data.reconciliations.length;
-  return `<section class="page-head"><p class="eyebrow">Field guide 03</p><h1>Pack and restore</h1><p class="lede">Your browser is the only home for this ledger. Keep a copy somewhere you control.</p></section>
+  return `<section class="page-head"><h1>Back up and restore</h1><p class="lede">Your browser is the only home for this ledger. Keep a copy somewhere you control.</p></section>
     <div class="backup-grid">
-      <section class="backup-block"><span class="plate-number">Plate A</span><h2>Portable CSV</h2><p>Exports entry rows for spreadsheets. Account opening balances and check history are not included.</p><button class="secondary" type="button" data-action="export-csv" ${data.transactions.length ? '' : 'disabled'}>Export CSV</button><label class="file-button">Import CSV<input id="csv-import" type="file" accept=".csv,text/csv"></label><details><summary>Required CSV columns</summary><code>date,account,amount,note</code><p>Account names must already exist. Use negative amounts for spending.</p></details></section>
-      <section class="backup-block featured"><span class="plate-number">Plate B · complete</span><h2>Encrypted field pack</h2><p>Includes all ${count} local records. Password encryption happens on this device; the password is never stored.</p><form id="backup-form"><label for="backup-password">New backup password <span>8+ characters</span></label><input id="backup-password" name="password" type="password" minlength="8" autocomplete="new-password" required><button class="primary" type="submit" ${count ? '' : 'disabled'}>Download encrypted backup</button></form><hr><label class="file-button">Choose backup to restore<input id="backup-import" type="file" accept=".pocket,.json,application/json"></label><div id="restore-password-wrap" hidden><label for="restore-password">Backup password</label><input id="restore-password" type="password" autocomplete="current-password"><button class="secondary" type="button" data-action="restore-backup">Replace local ledger</button></div><p id="backup-error" class="field-error" aria-live="polite"></p><p class="fine-print">No password recovery is possible. Test important backups on another browser profile.</p></section>
+      <section class="backup-block"><h2>CSV entries</h2><p>Exports entry rows for spreadsheets. Account opening balances and check history are not included.</p><button class="secondary" type="button" data-action="export-csv" ${data.transactions.length ? '' : 'disabled'}>Export CSV</button><label class="file-button">Import CSV<input id="csv-import" type="file" accept=".csv,text/csv"></label><details><summary>Required CSV columns</summary><code>date,account,amount,note</code><p>Account names must already exist. Use negative amounts for spending.</p></details></section>
+      <section class="backup-block featured"><h2>Encrypted backup</h2><p>Includes all ${count} local records. Password encryption happens on this device; the password is never stored.</p><form id="backup-form"><label for="backup-password">New backup password <span>8+ characters</span></label><input id="backup-password" name="password" type="password" minlength="8" autocomplete="new-password" required><button class="primary" type="submit" ${count ? '' : 'disabled'}>Download encrypted backup</button></form><hr><label class="file-button">Choose backup to restore<input id="backup-import" type="file" accept=".pocket,.json,application/json"></label><div id="restore-password-wrap" hidden><label for="restore-password">Backup password</label><input id="restore-password" type="password" autocomplete="current-password"><button class="secondary" type="button" data-action="restore-backup">Replace local ledger</button></div><p id="backup-error" class="field-error" aria-live="polite"></p><p class="fine-print">No password recovery is possible. Test important backups on another browser profile.</p></section>
     </div>`;
 }
 
 function renderSettings(): string {
-  return `<section class="page-head"><p class="eyebrow">Field guide 04</p><h1>Notebook settings</h1><p class="lede">Manage accounts, paper tone, and the local records on this device.</p></section>
+  return `<section class="page-head"><h1>Ledger settings</h1><p class="lede">Manage accounts, paper tone, and the local records on this device.</p></section>
     <div class="settings-list">
       <section><div><h2>Paper tone</h2><p>Choose a fixed paper tone or follow your device.</p></div><select id="theme-setting" aria-label="Paper tone"><option value="system">Follow device</option><option value="light">Day paper</option><option value="dark">Night paper</option></select></section>
       <section class="accounts-setting"><div><h2>Accounts</h2><p>${data.accounts.length} local account${data.accounts.length === 1 ? '' : 's'}</p></div><div class="account-manage">${data.accounts.map(account => `<div><span><strong>${h(account.name)}</strong><small>${h(account.currency)} · ${h(account.kind)}</small></span><button type="button" class="quiet danger-text" data-delete-account="${account.id}">Delete</button></div>`).join('')}<button type="button" class="secondary" data-action="open-account">Add account</button></div></section>
-      <section class="danger-zone"><div><h2>Erase this notebook</h2><p>Permanently deletes accounts, entries, and checks from this browser. Export a backup first.</p></div><button type="button" class="danger-button" data-action="erase-all">Erase all local data</button></section>
+      <section class="danger-zone"><div><h2>Erase this ledger</h2><p>Permanently deletes accounts, entries, and checks from this browser. Export a backup first.</p></div><button type="button" class="danger-button" data-action="erase-all">Erase all local data</button></section>
     </div>`;
 }
 
 function accountDialog(): string {
-  return `<dialog id="account-dialog"><form id="account-form" method="dialog"><div class="dialog-head"><div><p class="eyebrow">New specimen</p><h2>Add an account</h2></div><button type="button" class="icon-button" data-action="close-account" aria-label="Close">×</button></div><label for="account-name">Account name</label><input id="account-name" name="name" maxlength="40" required placeholder="Pocket cash"><div class="form-row"><div><label for="account-kind">Type</label><select id="account-kind" name="kind"><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select></div><div><label for="currency">Currency</label><select id="currency" name="currency">${currencies.map(value => `<option ${value === 'INR' ? 'selected' : ''}>${value}</option>`).join('')}</select></div></div><label for="opening">Balance right now</label><input id="opening" name="opening" inputmode="decimal" required value="0.00"><p class="field-hint">This becomes the starting measurement. Add only later changes.</p><p id="account-error" class="field-error" aria-live="polite"></p><button class="primary" type="submit">Create account</button></form></dialog>`;
+  return `<dialog id="account-dialog"><form id="account-form" method="dialog"><div class="dialog-head"><div><p class="eyebrow">New account</p><h2>Add an account</h2></div><button type="button" class="icon-button" data-action="close-account" aria-label="Close">×</button></div><label for="account-name">Account name</label><input id="account-name" name="name" maxlength="40" required placeholder="Pocket cash"><div class="form-row"><div><label for="account-kind">Type</label><select id="account-kind" name="kind"><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select></div><div><label for="currency">Currency</label><select id="currency" name="currency">${currencies.map(value => `<option ${value === 'INR' ? 'selected' : ''}>${value}</option>`).join('')}</select></div></div><label for="opening">Balance right now</label><input id="opening" name="opening" inputmode="decimal" required value="0.00"><p class="field-hint">This becomes the starting measurement. Add only later changes.</p><p id="account-error" class="field-error" aria-live="polite"></p><button class="primary" type="submit">Create account</button></form></dialog>`;
 }
 
 function deleteDialog(): string {
@@ -255,7 +267,15 @@ async function handleAction(action: string): Promise<void> {
   if (action === 'toggle-theme') toggleTheme();
   if (action === 'erase-all') confirmEraseAll();
   if (action === 'reset-demo' && demoMode) await resetDemo();
-  if (action === 'start-real' && demoMode) { await discardDatabase(); location.assign('/'); }
+  if (action === 'start-real' && demoMode) {
+    try {
+      await discardDatabase();
+      clearDemoPreferences();
+      location.assign('/');
+    } catch {
+      announce('Close other Pocket Reconcile tabs, then try again.');
+    }
+  }
   if (action === 'undo-transaction' && deletedTransaction) { await db.put('transactions', deletedTransaction); data.transactions.push(deletedTransaction); deletedTransaction = null; shell(); announce('Entry restored.'); }
   if (action === 'reload-update') location.reload();
 }
@@ -343,7 +363,7 @@ function confirmAccountDelete(id: string): void {
 }
 
 function confirmEraseAll(): void {
-  showConfirm('Erase the whole notebook?', `${data.accounts.length} accounts, ${data.transactions.length} entries, and ${data.reconciliations.length} checks will be permanently deleted from this browser.`, async () => { await eraseData(); data = { version: 1, accounts: [], transactions: [], reconciliations: [] }; selectedId = null; screen = 'ledger'; shell(); announce('All local ledger data erased.'); });
+  showConfirm('Erase the entire ledger?', `${data.accounts.length} accounts, ${data.transactions.length} entries, and ${data.reconciliations.length} checks will be permanently deleted from this browser.`, async () => { await eraseData(); data = { version: 1, accounts: [], transactions: [], reconciliations: [] }; selectedId = null; screen = 'ledger'; shell(); announce('All local ledger data erased.'); });
 }
 
 function showConfirm(title: string, copy: string, action: () => Promise<void>): void {
@@ -405,11 +425,19 @@ async function resetDemo(returnToLedger = true): Promise<void> {
   await replaceData(reset);
   data = reset;
   selectedId = reset.accounts[0]?.id ?? null;
+  clearDemoPreferences();
   localStorage.setItem(storageKey('pr:selected-account'), selectedId ?? '');
+  applyTheme();
   if (returnToLedger) screen = 'ledger';
   reconcileOpen = false;
   shell();
-  announce('Sample ledger reset.');
+  if (returnToLedger) announce('Sample ledger reset.');
+}
+
+function clearDemoPreferences(): void {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('demo:')) localStorage.removeItem(key);
+  }
 }
 
 function updateConnection(): void {
@@ -453,7 +481,7 @@ function navigateTo(next: Screen): void {
 }
 
 async function start(): Promise<void> {
-  configureDatabase(demoMode); applyTheme();
+  applyEntryMetadata(); configureDatabase(demoMode); applyTheme();
   screen = screenFromLocation();
   try { data = await loadData(); shell(); } catch {
     app.innerHTML = `<main id="main" class="fatal"><h1>Couldn’t open the local ledger.</h1><p>Your browser blocked IndexedDB. Allow site storage or try a non-private window, then reload.</p><button id="retry-storage" type="button">Try again</button></main>`;
@@ -464,7 +492,7 @@ async function start(): Promise<void> {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      registration.addEventListener('updatefound', () => { const worker = registration.installing; worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) announce('A fresh field guide is ready.', { label: 'Update', handler: 'reload-update' }); }); });
+      registration.addEventListener('updatefound', () => { const worker = registration.installing; worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) announce('An app update is ready.', { label: 'Update', handler: 'reload-update' }); }); });
     } catch { announce('Offline installation is unavailable in this browser.'); }
   }
 }

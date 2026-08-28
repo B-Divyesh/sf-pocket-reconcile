@@ -2,7 +2,7 @@
   "id": "/?source=pwa",
   "name": "Pocket Reconcile",
   "short_name": "Reconcile",
-  "description": "A private, offline field notebook for reconciling cash and card balances.",
+  "description": "Reconcile cash and card balances in a local ledger that works offline.",
   "start_url": "/?v=1",
   "scope": "/",
   "display": "standalone",

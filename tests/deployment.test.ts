@@ -44,4 +44,13 @@ describe('static deployment response policy', () => {
     expect(serviceWorker).toContain("'/demo/'");
     expect(readFileSync(new URL('../demo/index.html', import.meta.url), 'utf8')).toContain('Demo — Pocket Reconcile');
   });
+
+  it('uses plain ledger terms instead of decorative field-guide labels', () => {
+    const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+    const offline = readFileSync(new URL('../offline.html', import.meta.url), 'utf8');
+    for (const phrase of ['Field ledger', 'Recent specimens', 'Field guide 02', 'Pack and restore', 'Plate A', 'Encrypted field pack', 'Notebook settings', 'Erase this notebook', 'New specimen', 'Count what’s there']) {
+      expect(source).not.toContain(phrase);
+    }
+    expect(offline).toContain('This page is not available offline yet');
+  });
 });

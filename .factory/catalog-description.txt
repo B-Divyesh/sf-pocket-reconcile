@@ -1,1 +1,1 @@
-Reconcile cash and card balances in a private offline ledger.
+Reconcile cash, card, and wallet balances in a private ledger that works offline.

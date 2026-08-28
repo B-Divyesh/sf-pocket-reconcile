@@ -12,10 +12,10 @@ Live product: <https://pocket-reconcile.sociobot.in>
 - Exact balance checks, plus a required note when the totals differ
 - CSV entry import and export, with every row checked before import
 - Password-encrypted export and full restore of accounts, entries, and checks
-- Confirmed entry deletion with Undo, plus confirmed whole-ledger erasure
-- Standalone PWA installation, offline reload, and an update prompt
+- Delete an entry with Undo, or erase the entire ledger after confirmation
+- Installable web app, offline reload, and an update prompt
 
-It keeps supported money amounts in exact whole cents. Pocket Reconcile is a record-keeping utility, not financial advice, a bank feed, or an accounting system.
+It stores each supported amount in the currency’s smallest unit. Pocket Reconcile is a record-keeping utility, not financial advice, a bank feed, or an accounting system.
 
 ## Try the sample ledger
 
@@ -40,7 +40,7 @@ npm run build
 npm run preview
 ```
 
-`npm test` runs unit tests, strict TypeScript, a production build, and Playwright. Browser sizes are 390×844 mobile and 1440×1000 desktop. The suite checks axe, keyboard use, privacy egress, updates, offline use, route history, and claims. Playwright 1.58.2 is pinned, and its Chromium browser must be available. Playwright builds the production site automatically from a clean checkout. `npm run build` writes the static product to `./dist`. The output has `dist/index.html` at its root. Set `PLAYWRIGHT_BASE_URL` to test a deployed site.
+`npm test` runs unit tests, strict TypeScript, a production build, and Playwright. Browser sizes are 390×844 mobile and 1440×1000 desktop. The suite checks accessibility, keyboard use, outside network requests, updates, offline use, route history, and claims. Playwright 1.58.2 is pinned, and its Chromium browser must be available. Playwright builds the production site automatically from a clean checkout. `npm run build` writes the static product to `./dist`. The output has `dist/index.html` at its root. Set `PLAYWRIGHT_BASE_URL` to test a deployed site.
 
 ## CSV format
 
@@ -54,7 +54,7 @@ Imports require `date`, `account`, `amount`, and `note`. Dates use `YYYY-MM-DD`.
 
 ## Data and recovery
 
-Records remain in this browser. A full `.pocket` backup contains accounts, entries, and balance checks. It uses a versioned encrypted JSON envelope. Its password is not stored and cannot be recovered. CSV is portable but does not include opening balances or balance-check history.
+Records remain in this browser. A full `.pocket` backup contains accounts, entries, and balance checks. The encrypted backup includes a format version for future restores. Its password is not stored and cannot be recovered. CSV is portable but does not include opening balances or balance-check history.
 
 See [the design thesis](.factory/design.md), [demo details](.factory/demo.md), [claim checks](.factory/claims.json), [privacy policy](privacy/index.html), [terms](terms/index.html), and [factory handoff](.factory/handoff.md).
 
