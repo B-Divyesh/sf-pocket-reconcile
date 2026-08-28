@@ -58,6 +58,8 @@ Deployed with `/opt/fleet/lib/deploy-static.sh pocket-reconcile dist`.
 - Full live Playwright passed **36/36** (18 mobile 390×844 and 18 desktop
   1440×1000), including all claim tests, accessibility, keyboard, demo
   isolation, first-visit offline reload, privacy egress, and update action.
+- Live Lighthouse mobile categories: Performance **100**, Accessibility
+  **100**, Best Practices **100**, and SEO **100**.
 
 ## Scope notes
 
