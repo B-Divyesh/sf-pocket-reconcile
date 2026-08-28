@@ -1,5 +1,23 @@
 # Pocket Reconcile v1 handoff
 
+## Independent verification status — FAIL
+
+Verification work order `pocket-reconcile-verify-1` tested candidate
+`f2ecd58b85a34ca76f4a61568b1cb02e86198adb` and the live URL
+<https://pocket-reconcile.sociobot.in/> on 2026-08-28. The live hashed JS, CSS,
+and service-worker bytes match the candidate exactly, and the normal local-first
+PWA flow passes. **Do not release this candidate:** CSV import accepts impossible
+calendar dates and silently normalizes them, and a maximum accepted decimal
+amount displays one cent wrong. The live host also applies only `max-age=30` to
+hashed assets rather than immutable caching. Full evidence and reproduction are
+in [verification.md](verification.md).
+
+Verifier commands passed: `npm ci`, `npm test` (7 unit + 4 Playwright tests,
+type check, production build), independent mobile/desktop/keyboard/axe/offline
+checks, and Lighthouse 99 performance / 100 accessibility / 100 best practices
+/ 100 SEO. No separate lint script exists. Product code was not changed during
+verification; this report is the only verifier change.
+
 Work order: `pocket-reconcile-build-1`
 
 Completed: 2026-08-28
