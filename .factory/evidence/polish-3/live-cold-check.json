@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-08-28T23:18:26.776Z",
+  "applicationCommit": "a16b69d5b0861c449dd8ae4ef9bbb9dc8df78739",
+  "homeStatus": 200,
+  "demo": {
+    "url": "https://pocket-reconcile.sociobot.in/?demo=1",
+    "banner": true,
+    "reset": true,
+    "startForReal": true,
+    "heading": "Add a ledger entry"
+  },
+  "dialogs": [
+    "Add an account",
+    "Delete this entry?",
+    "Delete Weekend cash?",
+    "Erase the entire ledger?"
+  ],
+  "explicit404Status": 200,
+  "unknownRouteStatus": 404,
+  "mobile404ActionGapPx": 8,
+  "requestOrigins": [
+    "https://pocket-reconcile.sociobot.in"
+  ],
+  "consoleErrors": []
+}

@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-08-28",
+  "url": "https://pocket-reconcile.sociobot.in",
+  "categories": {
+    "performance": 100,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 100
+  },
+  "metrics": {
+    "firstContentfulPaint": "1.0 s",
+    "largestContentfulPaint": "1.3 s",
+    "speedIndex": "1.0 s",
+    "totalBlockingTime": "20 ms",
+    "cumulativeLayoutShift": "0"
+  },
+  "transferBytes": 93303
+}

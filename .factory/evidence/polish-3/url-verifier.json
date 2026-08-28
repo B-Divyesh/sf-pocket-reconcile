@@ -1,0 +1,14 @@
+{
+  "url": "https://pocket-reconcile.sociobot.in",
+  "loadMs": 1907,
+  "errors": [],
+  "a11y": {
+    "title": "Pocket Reconcile — private, offline balance checks",
+    "lang": "en",
+    "h1": 1,
+    "main": true,
+    "imgsMissingAlt": 0,
+    "buttonsUnlabeled": 0,
+    "textLength": 1055
+  }
+}
