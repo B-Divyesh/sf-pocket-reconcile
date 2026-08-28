@@ -33,13 +33,25 @@
 
 ## Deployment and live identity
 
-Pending deployment of the committed `dist/` with:
+- Repair source commit `6bd1c02` was pushed to `origin/main`.
+- `/opt/fleet/lib/deploy-static.sh pocket-reconcile dist` completed successfully for Static Web App `sf-pocket-reconcile`.
+- Azure deployment ID: `a6d306d9-f3ec-4f75-a71d-be72afec6ab6`.
+- Custom domain: <https://pocket-reconcile.sociobot.in> returned HTTPS 200 after upload.
+- Live `/opt/fleet/lib/verify-url.sh` passed with no console/page errors and the expected title, language, heading, landmark, image alt, and button labels.
+- Live Playwright passed 56/56 at 390×844 and 1440×1000, including all 15 claims, keyboard, axe, privacy, offline/update, and route history.
+- Live routes returned 200 for `/`, `/demo`, `/demo/`, `/privacy/`, `/terms/`, and the manifest. `/not-a-real-route` returned the styled 404 with HTTP 404.
+- Live responses include HSTS, same-origin CSP, strict referrer policy, `nosniff`, and restrictive Permissions-Policy. Hashed JavaScript is one-year immutable; `sw.js` is `no-cache`.
+- Local and live SHA-256 identities match:
 
-```sh
-/opt/fleet/lib/deploy-static.sh pocket-reconcile dist
-```
+| Artifact | SHA-256 |
+| --- | --- |
+| `index.html` | `aa1e9627534baa485141a2d5952387ad20991a1213924b677f526563f9f702f3` |
+| `demo/index.html` | `8b7d98dba0a022ffb96099291721e430abd31cccff9d1f822deb1b84aad0f206` |
+| `sw.js` | `5c0cc75bcf8087edda493f72004331f1092482e5599d97b9bcc13113165f7999` |
+| application JavaScript | `2d6c2a860abada08b4e60fb16b39acce0b42b444d04e3a3ff95efb5e024db7f4` |
+| application CSS | `cdb78363ff6e8a8e57829e01b058ba8cff40e65b1323a1b61a66fbd52c0182a1` |
 
-After upload, rerun URL verification, live Playwright, response headers/routes, and local/live artifact hashes. Record the deployment ID and results here before final handoff.
+- Live Lighthouse 13.4.1 mobile: Performance 100, Accessibility 100, Best Practices 100, SEO 100; FCP 0.9s, LCP 1.4s, TBT 0ms, CLS 0, 91 KiB transferred.
 
 ## Known scope note
 
