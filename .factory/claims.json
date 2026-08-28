@@ -42,6 +42,13 @@
     "sandbox": "Fresh /demo ledger; import one row and assert its note and exact changed balance."
   },
   {
+    "id": "csv-amount-signs",
+    "claim": "CSV imports treat negative amounts as spending and positive amounts as money received.",
+    "where": "README CSV format",
+    "test": "npm run test:claims -- --grep @claim:csv-amount-signs",
+    "sandbox": "Fresh /demo ledger; import one negative and one positive row, then assert both entries and their combined balance change."
+  },
+  {
     "id": "atomic-csv-import",
     "claim": "Validates every CSV row before saving any imported entry.",
     "where": "README",
@@ -96,6 +103,13 @@
     "where": "Home, privacy policy, terms, README",
     "test": "npm run test:claims -- --grep @claim:local-records",
     "sandbox": "Fresh /demo flow; assert only product-origin requests, local IndexedDB, and no login input."
+  },
+  {
+    "id": "account-name-uniqueness",
+    "claim": "Account names stay unique regardless of case or repeated spaces.",
+    "where": "README CSV format",
+    "test": "npm run test:claims -- --grep @claim:account-name-uniqueness",
+    "sandbox": "Fresh /demo ledger; try a case and whitespace variant of an existing account name, then assert it is rejected."
   },
   {
     "id": "exact-decimals",

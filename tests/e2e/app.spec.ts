@@ -47,13 +47,10 @@ test('rejects an impossible CSV date without changing the ledger', async ({ page
   await expect(page.getByText('₹100.00', { exact: true }).first()).toBeVisible();
 });
 
-test('rejects duplicate account names before they can make CSV assignment ambiguous', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Create my first account' }).click();
-  await page.getByLabel('Account name').fill('Pocket cash');
-  await page.getByRole('button', { name: 'Create account' }).click();
+test('@claim:account-name-uniqueness rejects case and whitespace variants of an existing account', async ({ page }) => {
+  await page.goto('/demo');
   await page.getByRole('button', { name: 'Add account' }).click();
-  await page.getByLabel('Account name').fill('  POCKET   CASH  ');
+  await page.getByLabel('Account name').fill('  WEEKEND   CASH  ');
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.locator('#account-error')).toHaveText('Use a unique account name so CSV entries always return to the right ledger.');
   await expect(page.getByLabel('Account name')).toBeFocused();
@@ -142,8 +139,12 @@ test('keeps every advertised mobile link target at least 44 by 44 CSS pixels', a
   await page.goto('/');
   for (const target of [
     page.getByRole('link', { name: 'Pocket Reconcile, ledger' }),
-    page.getByRole('link', { name: 'Privacy' }),
-    page.getByRole('link', { name: 'Terms' })
+    page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Ledger' }),
+    page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Demo' }),
+    page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Privacy' }),
+    page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Terms' }),
+    page.getByRole('contentinfo').getByRole('link', { name: 'Privacy' }),
+    page.getByRole('contentinfo').getByRole('link', { name: 'Terms' })
   ]) {
     const box = await target.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(44);
@@ -190,7 +191,8 @@ test('first-visit app shell opens offline with the browser HTTP cache disabled',
 });
 
 test('@claim:demo-sandbox opens realistic sample data in its own namespace and discards it on exit', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/?demo=1');
+  await expect(page).toHaveURL(/\?demo=1$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Weekend cash' })).toBeVisible();
   await expect(page.getByText('Saturday market', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Demo controls')).toContainText('Demo — sample data, nothing is saved.');
@@ -339,6 +341,20 @@ test('@claim:csv-import imports a valid transaction into its named account', asy
   await expect(page.getByText('₹105.55', { exact: true }).first()).toBeVisible();
 });
 
+test('@claim:csv-amount-signs applies negative and positive imported amounts in opposite directions', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.locator('#csv-import').setInputFiles({
+    name: 'signed-entries.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('date,account,amount,note\n2026-08-28,Weekend cash,-2.00,Bus fare\n2026-08-28,Weekend cash,5.00,Refund')
+  });
+  await expect(page.getByRole('status')).toContainText('2 entries imported.');
+  await page.locator('button[data-nav="ledger"]').click();
+  await expect(page.getByText('Bus fare', { exact: true })).toBeVisible();
+  await expect(page.getByText('Refund', { exact: true })).toBeVisible();
+  await expect(page.getByText('₹107.50', { exact: true }).first()).toBeVisible();
+});
+
 test('@claim:atomic-csv-import rejects every row when any imported row is invalid', async ({ page }) => {
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Backup' }).click();
@@ -469,6 +485,23 @@ test('landing has the required sequence and every route has release metadata', a
     return [image.width, image.height];
   });
   expect(socialSize).toEqual([1200, 630]);
+});
+
+test('uses the same primary route links on the ledger and legal pages', async ({ page }) => {
+  for (const path of ['/', '/demo', '/privacy/', '/terms/', '/404.html']) {
+    await page.goto(path);
+    const nav = page.getByRole('navigation', { name: 'Primary' });
+    await expect(nav.getByRole('link', { name: 'Ledger' })).toHaveAttribute('href', /^(\/|\/demo)$/);
+    await expect(nav.getByRole('link', { name: 'Demo' })).toHaveAttribute('href', '/demo');
+    await expect(nav.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
+    await expect(nav.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms/');
+  }
+  await page.goto('/privacy/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy policy');
+  await page.goto('/terms/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of use');
+  await page.goto('/404.html');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
 });
 
 test('explains excess currency precision instead of calling it zero', async ({ page }) => {

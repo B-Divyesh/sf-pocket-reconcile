@@ -1,6 +1,6 @@
 # Pocket Reconcile
 
-Pocket Reconcile helps privacy-minded budgeters reconcile cash, cards, and a few manual transactions from a phone.
+Pocket Reconcile helps privacy-minded budgeters reconcile cash, cards, and a few manual entries from a phone.
 
 Records remain in this browser; no bank login is required. It works offline after the first visit and exports ledger entries as CSV or a password-encrypted backup.
 
@@ -10,7 +10,7 @@ Live product: <https://pocket-reconcile.sociobot.in>
 
 - Local cash, card, or other accounts with spent and received entries
 - Exact balance checks, plus a required note when the totals differ
-- CSV transaction import and export, with every row checked before import
+- CSV entry import and export, with every row checked before import
 - Password-encrypted export and full restore of accounts, entries, and checks
 - Confirmed entry deletion with Undo, plus confirmed whole-ledger erasure
 - Standalone PWA installation, offline reload, and an update prompt
@@ -19,7 +19,7 @@ It keeps supported money amounts in exact whole cents. Pocket Reconcile is a rec
 
 ## Try the sample ledger
 
-Open <https://pocket-reconcile.sociobot.in/demo> or select **Try it with sample data** on the first screen. The sample ledger includes two accounts, three transactions, and a completed check. Sample data never mixes with personal records; use **Reset demo** to restore it or **Start for real** to discard it.
+Open <https://pocket-reconcile.sociobot.in/demo> or select **Try it with sample data** on the first screen. The sample ledger includes two accounts, three entries, and a completed check. Sample data never mixes with personal records; use **Reset demo** to restore it or **Start for real** to discard it.
 
 ## Run locally
 
@@ -54,7 +54,7 @@ Imports require `date`, `account`, `amount`, and `note`. Dates use `YYYY-MM-DD`.
 
 ## Data and recovery
 
-Browser records are not synced or recoverable by the maintainers. A full `.pocket` backup contains accounts, entries, and balance checks. It uses a versioned encrypted JSON envelope. Its password is not stored and cannot be recovered. CSV is portable but does not include opening balances or balance-check history.
+Records remain in this browser. A full `.pocket` backup contains accounts, entries, and balance checks. It uses a versioned encrypted JSON envelope. Its password is not stored and cannot be recovered. CSV is portable but does not include opening balances or balance-check history.
 
 See [the design thesis](.factory/design.md), [demo details](.factory/demo.md), [claim checks](.factory/claims.json), [privacy policy](privacy/index.html), [terms](terms/index.html), and [factory handoff](.factory/handoff.md).
 
@@ -64,4 +64,4 @@ Deploy the contents of `dist/` as a static site. The included Azure configuratio
 
 ## License
 
-MIT. Generated project artwork is original to Pocket Reconcile and is covered by the same license; its prompt and provenance are recorded in `.factory/design.md` and `assets/src/pressed-ledger.prompt.json`.
+MIT. Generated project artwork is original to Pocket Reconcile and covered by the MIT license. Its prompt and provenance are in `.factory/design.md` and `assets/src/pressed-ledger.prompt.json`.

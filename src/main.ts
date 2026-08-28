@@ -73,6 +73,12 @@ function shell(): void {
         <svg aria-hidden="true" viewBox="0 0 42 42"><path d="M10 34C10 20 18 8 34 7c-1 16-9 25-24 27Z"/><path d="M10 34c7-9 13-15 22-23M20 24l-1-8m6 2 7 1"/></svg>
         <span>Pocket<br><em>Reconcile</em></span>
       </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="${demoMode ? '/demo' : '/'}" ${!demoMode ? 'aria-current="page"' : ''}>Ledger</a>
+        <a href="/demo" ${demoMode ? 'aria-current="page"' : ''}>Demo</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/terms/">Terms</a>
+      </nav>
       <div class="header-tools">
         <span id="connection" class="connection ${online ? '' : 'is-offline'}"><span aria-hidden="true"></span>${online ? 'On device' : 'Offline · ready'}</span>
         <button class="icon-button" type="button" data-action="toggle-theme" aria-label="Change color theme" title="Change color theme"><span aria-hidden="true">◐</span></button>
@@ -113,21 +119,21 @@ function renderLedger(): string {
   if (!data.accounts.length) return `
     <section class="welcome" aria-labelledby="welcome-title">
       <div class="welcome-copy">
-        <p class="eyebrow">A two-minute balance check</p>
+        <p class="eyebrow">Balance checks for a few accounts</p>
         <h1 id="welcome-title">Reconcile cash and card balances.</h1>
         <p class="lede">For privacy-minded budgeters who track a few accounts from a phone.</p>
         <div class="button-row"><a class="primary" href="/demo">Try it with sample data</a><button class="secondary" type="button" data-action="open-account">Create my first account</button></div>
         <p class="field-hint">The sample opens a working ledger. It never mixes with your records.</p>
         <ul class="trust-list" aria-label="Product facts"><li>Works offline after first visit</li><li>No bank login</li><li>Export CSV or encrypted backup</li></ul>
       </div>
-      <figure class="hero-figure"><picture><source srcset="/assets/pressed-ledger-384.webp 384w, /assets/pressed-ledger.webp 768w" sizes="(max-width: 760px) calc(100vw - 48px), 465px" type="image/webp"><img src="/assets/pressed-ledger.jpg" width="768" height="512" alt="An open field notebook with a fern aligned across two ledger columns" fetchpriority="high" decoding="async"></picture><figcaption>Observe · record · reconcile</figcaption></figure>
+      <figure class="hero-figure"><picture><source srcset="/assets/pressed-ledger-384.webp 384w, /assets/pressed-ledger.webp 768w" sizes="(max-width: 760px) calc(100vw - 48px), 465px" type="image/webp"><img src="/assets/pressed-ledger.jpg" width="768" height="512" alt="An open field notebook with a fern aligned across two ledger columns" fetchpriority="high" decoding="async"></picture></figure>
     </section>
     <section class="landing-process" aria-labelledby="how-title">
-      <p class="eyebrow">Three field notes</p><h2 id="how-title">How it works</h2>
+      <h2 id="how-title">How it works</h2>
       <ol><li><strong>Set the starting balance.</strong><span>Create each cash, card, or wallet account by entering what it holds now.</span></li><li><strong>Record each change.</strong><span>Add money spent or received with a date and a short note.</span></li><li><strong>Count and compare.</strong><span>Enter the balance you see. Add a note when the totals differ.</span></li></ol>
     </section>
     <section class="landing-limits" aria-labelledby="limits-title">
-      <p class="eyebrow">Clear limits</p><h2 id="limits-title">What it does not do</h2>
+      <h2 id="limits-title">What it does not do</h2>
       <p>Pocket Reconcile does not connect to banks, sync records between devices, or give financial advice.</p>
       <p>Your browser holds the working ledger. Export a backup before clearing browser data or moving devices.</p>
     </section>`;
@@ -196,7 +202,7 @@ function renderBackup(): string {
   const count = data.accounts.length + data.transactions.length + data.reconciliations.length;
   return `<section class="page-head"><p class="eyebrow">Field guide 03</p><h1>Pack and restore</h1><p class="lede">Your browser is the only home for this ledger. Keep a copy somewhere you control.</p></section>
     <div class="backup-grid">
-      <section class="backup-block"><span class="plate-number">Plate A</span><h2>Portable CSV</h2><p>Exports transaction rows for spreadsheets. Account opening balances and check history are not included.</p><button class="secondary" type="button" data-action="export-csv" ${data.transactions.length ? '' : 'disabled'}>Export CSV</button><label class="file-button">Import CSV<input id="csv-import" type="file" accept=".csv,text/csv"></label><details><summary>Required CSV columns</summary><code>date,account,amount,note</code><p>Account names must already exist. Use negative amounts for spending.</p></details></section>
+      <section class="backup-block"><span class="plate-number">Plate A</span><h2>Portable CSV</h2><p>Exports entry rows for spreadsheets. Account opening balances and check history are not included.</p><button class="secondary" type="button" data-action="export-csv" ${data.transactions.length ? '' : 'disabled'}>Export CSV</button><label class="file-button">Import CSV<input id="csv-import" type="file" accept=".csv,text/csv"></label><details><summary>Required CSV columns</summary><code>date,account,amount,note</code><p>Account names must already exist. Use negative amounts for spending.</p></details></section>
       <section class="backup-block featured"><span class="plate-number">Plate B · complete</span><h2>Encrypted field pack</h2><p>Includes all ${count} local records. Password encryption happens on this device; the password is never stored.</p><form id="backup-form"><label for="backup-password">New backup password <span>8+ characters</span></label><input id="backup-password" name="password" type="password" minlength="8" autocomplete="new-password" required><button class="primary" type="submit" ${count ? '' : 'disabled'}>Download encrypted backup</button></form><hr><label class="file-button">Choose backup to restore<input id="backup-import" type="file" accept=".pocket,.json,application/json"></label><div id="restore-password-wrap" hidden><label for="restore-password">Backup password</label><input id="restore-password" type="password" autocomplete="current-password"><button class="secondary" type="button" data-action="restore-backup">Replace local ledger</button></div><p id="backup-error" class="field-error" aria-live="polite"></p><p class="fine-print">No password recovery is possible. Test important backups on another browser profile.</p></section>
     </div>`;
 }
