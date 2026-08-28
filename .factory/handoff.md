@@ -1,46 +1,53 @@
-# Pocket Reconcile polish-1 handoff
+# Pocket Reconcile review-2 handoff
 
 ## Delivered
 
-- Fixed every F-1-1 through F-1-11 finding in `.factory/review-1.md`.
-- Repair commits: `158661af926f1163ce19a047229da6c05697aa36` and
-  `b222b6a`; both are pushed to `main`.
-- Deployed the final `dist/` with the factory static deployment runner. Azure
-  deployment ID: `70d9fef8-1ec8-4192-8d15-beefc1072284`.
-- Live: <https://pocket-reconcile.sociobot.in>
+- Added `.factory/review-2.md` with an adversarial mobile/desktop first-read
+  review of the live deployment and current source.
+- Verdict: **FAIL** with one blocking and ten minor findings.
+- Product code was not modified.
 
-## Verification evidence
+## Verification performed
 
-- Fresh remote clone: `/tmp/pocket-reconcile-clean-VG2icy` at
-  `158661af926f1163ce19a047229da6c05697aa36`; `npm ci` passed with 0 audit
-  vulnerabilities.
-- All 17 exact commands in `.factory/claims.json` passed from that clone. Each
-  ran in mobile and desktop Chromium (34 claim assertions total). The complete
-  command log is `/tmp/pocket-reconcile-clean-claims.log`.
-- The clean clone’s `npm test` passed: 21 Vitest checks, strict TypeScript and
-  Vite build, then 60 Playwright checks. Log:
-  `/tmp/pocket-reconcile-clean-full.log`.
-- Final production build passed. Initial application assets are 36.98 KB JS
-  raw (12.45 KB gzip) and 20.02 KB CSS raw (5.18 KB gzip); no web fonts ship.
-- Final live suite passed: `PLAYWRIGHT_BASE_URL=https://pocket-reconcile.sociobot.in npm run test:e2e` → 60 passed. It includes Playwright Axe WCAG 2 A/AA scans with no serious or critical violations, keyboard/focus checks, same-origin privacy checks, offline reload, route history, metadata, demo isolation, and mobile targets. Log: `/tmp/pocket-reconcile-live-e2e.log`.
-- `/opt/fleet/lib/verify-url.sh https://pocket-reconcile.sociobot.in /tmp/pocket-reconcile-live-verify-final` passed: 200 response, title, `lang=en`, one h1, main landmark, image alt text, labeled buttons, and no console errors. Cold load: 733 ms. Screenshots and JSON report are in `/tmp/pocket-reconcile-live-verify-final/`.
-- Lighthouse on the live root: Performance 99, Accessibility 100, Best
-  Practices 100, SEO 100. Report: `/tmp/pocket-reconcile-lighthouse.json`.
+- Cold Chromium contexts at 390×844 and 1440×1000.
+- One-click live demo, sample visibility, reset, seeded-personal-ledger
+  preservation, demo namespace inspection, exit cleanup, and request logging.
+- Fresh depth-one GitHub clone at
+  `938698b172aa74d33f848deda3176c733ba86530`; all 17 exact
+  `.factory/claims.json` commands passed in mobile and desktop Chromium.
+- Fresh-clone `npm test`: 21 unit tests and 60 Playwright tests passed; build
+  completed with 12.45 KB gzip JavaScript.
+- Live `npm run test:e2e`: 60 tests passed, including Playwright Axe scans,
+  offline reload, request-origin, route history, and metadata checks.
+- `/opt/fleet/lib/verify-url.sh`: 200 response, one h1, `lang=en`, main
+  landmark, no missing alt text, no unlabeled buttons, no console errors, and
+  633 ms cold load.
+- Live crawl of root, demo/deep links, Privacy, Terms, 404, offline page,
+  robots, sitemap, manifest, and every same-origin link.
+- Every F-1-1 through F-1-11 closure checked against live output and source.
 
-## How to run
+## Blocking issue
 
-```sh
-npm ci
-npm test
-npm run build
-npm run preview
-```
+**Start for real** deletes `demo:pocket-reconcile` but leaves demo-prefixed
+local-storage state such as `demo:pr:selected-account`. The existing
+`@claim:demo-sandbox` test does not check demo-key cleanup or preserve a seeded
+personal ledger as part of the automated assertion. See F-2-1.
 
-Open `/demo` or `/?demo=1` for the isolated sample. Reset demo restores the
-sample; Start for real discards it and opens the real local ledger.
+## Other findings
 
-## Known gaps
+Desktop CTA sizing, ambiguous/metaphorical application copy, two empty states,
+four README phrases, cross-currency precision wording/coverage, and incomplete
+apple-touch metadata remain. See F-2-2 through F-2-11 for exact fixes.
 
-None. The standalone Axe CLI could not launch its Selenium browser in this
-container; the repository’s Playwright Axe integration passed locally and
-against the deployed site instead.
+## Evidence paths
+
+- `/tmp/pocket-reconcile-review2-claims.log`
+- `/tmp/pocket-reconcile-review2-full.log`
+- `/tmp/pocket-reconcile-review2-live-e2e.log`
+- `/tmp/review2-mobile-cold.png`
+- `/tmp/review2-desktop-cold.png`
+- `/tmp/review2-demo-mobile.png`
+- `/tmp/pocket-reconcile-review2-verify-pYIHIw/verify.json`
+
+These paths are ephemeral worker evidence; the durable findings and results are
+recorded in `.factory/review-2.md`.
