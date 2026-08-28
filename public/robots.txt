@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pocket-reconcile.sociobot.in/sitemap.xml
