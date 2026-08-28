@@ -1,6 +1,10 @@
 import type { Account, AppData, Transaction } from './types';
 import { moneyInput, parseMoney } from './money';
 
+export function accountNameKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 function quote(value: string | number): string {
   const text = String(value);
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -32,8 +36,11 @@ export function parseCsv(text: string, accounts: Account[]): { transactions: Tra
     if (row.every(cell => !cell.trim())) return;
     const line = offset + 2;
     const name = row[index.account ?? -1]?.trim() ?? '';
-    const account = accounts.find(item => item.name.toLowerCase() === name.toLowerCase());
-    if (!account) { errors.push(`Row ${line}: account “${name}” does not exist.`); return; }
+    const matches = accounts.filter(item => accountNameKey(item.name) === accountNameKey(name));
+    if (!matches.length) { errors.push(`Row ${line}: account “${name}” does not exist.`); return; }
+    if (matches.length > 1) { errors.push(`Row ${line}: account “${name}” is ambiguous. Rename duplicate accounts before importing.`); return; }
+    const account = matches[0];
+    if (!account) return;
     const occurredOn = row[index.date ?? -1]?.trim() ?? '';
     if (!isCalendarDate(occurredOn)) {
       errors.push(`Row ${line}: use a date like 2026-08-28.`); return;

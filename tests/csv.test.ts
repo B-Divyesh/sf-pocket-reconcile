@@ -21,6 +21,14 @@ describe('CSV ownership', () => {
     expect(parsed.errors[0]).toContain('does not exist');
   });
 
+  it('rejects an ambiguous duplicate account name instead of choosing the first ledger', () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'id' });
+    const duplicate = { ...account, id: 'a2', name: '  POCKET   CASH  ' };
+    const parsed = parseCsv('date,account,amount,note\n2026-08-28,Pocket cash,7.00,Duplicate account probe', [account, duplicate]);
+    expect(parsed.transactions).toEqual([]);
+    expect(parsed.errors).toEqual(['Row 2: account “Pocket cash” is ambiguous. Rename duplicate accounts before importing.']);
+  });
+
   it.each(['2025-02-29', '2026-04-31', '2026-02-31'])(
     'rejects the impossible calendar date %s without returning an import row',
     occurredOn => {

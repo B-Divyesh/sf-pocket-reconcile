@@ -47,6 +47,39 @@ test('rejects an impossible CSV date without changing the ledger', async ({ page
   await expect(page.getByText('₹100.00', { exact: true }).first()).toBeVisible();
 });
 
+test('rejects duplicate account names before they can make CSV assignment ambiguous', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByLabel('Account name').fill('Pocket cash');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByRole('button', { name: 'Add account' }).click();
+  await page.getByLabel('Account name').fill('  POCKET   CASH  ');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.locator('#account-error')).toHaveText('Use a unique account name so CSV entries always return to the right ledger.');
+  await expect(page.getByLabel('Account name')).toBeFocused();
+  await expect(page.locator('#account-dialog')).toBeVisible();
+});
+
+test('undo restores a deleted entry and its balance', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByLabel('Account name').fill('Pocket cash');
+  await page.getByLabel('Balance right now').fill('90.00');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByLabel('Received').check();
+  await page.getByLabel('Amount INR').fill('5.00');
+  await page.getByLabel('Note').fill('Cash returned');
+  await page.getByRole('button', { name: 'Add to ledger' }).click();
+  await expect(page.getByText('₹95.00', { exact: true }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Delete Cash returned entry' }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('₹90.00', { exact: true }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('₹95.00', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Cash returned', { exact: true })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Entry restored.');
+});
+
 test('supports the primary keyboard path and dialog focus', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Tab');
@@ -71,7 +104,9 @@ test('makes no third-party requests in the ordinary free workflow', async ({ pag
   expect([...unexpectedOrigins]).toEqual([]);
 });
 
-test('announces an installed service-worker update with an action', async ({ page }) => {
+test('announces an installed service-worker update and reloads from its action', async ({ page }) => {
+  let documentRequests = 0;
+  page.on('request', request => { if (request.resourceType() === 'document') documentRequests += 1; });
   await page.addInitScript(() => {
     const worker = Object.assign(new EventTarget(), { state: 'installing' });
     const registration = Object.assign(new EventTarget(), { installing: worker });
@@ -93,6 +128,25 @@ test('announces an installed service-worker update with an action', async ({ pag
   await page.goto('/');
   await expect(page.getByRole('status')).toContainText('A fresh field guide is ready.');
   await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
+  const before = documentRequests;
+  await Promise.all([
+    page.waitForNavigation(),
+    page.getByRole('button', { name: 'Update' }).click()
+  ]);
+  expect(documentRequests).toBeGreaterThan(before);
+});
+
+test('keeps every advertised mobile link target at least 44 by 44 CSS pixels', async ({ page }) => {
+  await page.goto('/');
+  for (const target of [
+    page.getByRole('link', { name: 'Pocket Reconcile, ledger' }),
+    page.getByRole('link', { name: 'Privacy' }),
+    page.getByRole('link', { name: 'Terms' })
+  ]) {
+    const box = await target.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test('has no serious accessibility violations on first run', async ({ page }) => {
@@ -114,10 +168,19 @@ test('dark treatment and legal pages meet the accessibility baseline', async ({ 
   }
 });
 
-test('installed app shell opens offline', async ({ page, context }) => {
+test('first-visit app shell opens offline with the browser HTTP cache disabled', async ({ page, context }) => {
   await page.goto('/');
   await page.waitForFunction(() => navigator.serviceWorker?.ready);
-  await page.reload();
+  await page.waitForFunction(() => navigator.serviceWorker?.controller);
+  const cachedShell = await page.evaluate(async () => {
+    const requests = (await Promise.all((await caches.keys()).map(async name => (await caches.open(name)).keys()))).flat();
+    return requests.map(request => new URL(request.url).pathname);
+  });
+  expect(cachedShell.some(path => /^\/immutable\/.*\.js$/.test(path))).toBe(true);
+  expect(cachedShell.some(path => /^\/immutable\/.*\.css$/.test(path))).toBe(true);
+  const session = await context.newCDPSession(page);
+  await session.send('Network.enable');
+  await session.send('Network.setCacheDisabled', { cacheDisabled: true });
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

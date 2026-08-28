@@ -1,7 +1,7 @@
 import './styles.css';
 import type { Account, AppData, Currency, Reconciliation, Transaction } from './types';
 import { db, eraseData, loadData, replaceData } from './db';
-import { exportCsv, parseCsv } from './csv';
+import { accountNameKey, exportCsv, parseCsv } from './csv';
 import { decryptBackup, encryptBackup } from './backup';
 import { formatMoney, moneyInput, parseMoney } from './money';
 import { cachedLicense, captureLicenseFromUrl, checkoutUrl, clearLicense, storeLicense, verifyLicense, type LicenseState } from './license';
@@ -213,7 +213,6 @@ function bindEvents(): void {
   document.querySelectorAll<HTMLElement>('[data-nav]').forEach(element => element.addEventListener('click', () => {
     screen = element.dataset.nav as Screen; reconcileOpen = false; history.replaceState({}, '', `#${screen}`); shell(); document.querySelector<HTMLElement>('#main')?.focus();
   }));
-  document.querySelectorAll<HTMLElement>('[data-action]').forEach(element => element.addEventListener('click', () => void handleAction(element.dataset.action ?? '')));
   document.querySelector<HTMLSelectElement>('#account-select')?.addEventListener('change', event => { selectedId = (event.target as HTMLSelectElement).value; shell(); });
   document.querySelector<HTMLFormElement>('#account-form')?.addEventListener('submit', event => void addAccount(event));
   document.querySelector<HTMLFormElement>('#transaction-form')?.addEventListener('submit', event => void addTransaction(event));
@@ -256,6 +255,11 @@ async function addAccount(event: SubmitEvent): Promise<void> {
   if (openingMinor === null) { if (error) error.textContent = `Enter a valid ${currency} amount.`; return; }
   const account: Account = { id: crypto.randomUUID(), name: String(values.get('name') ?? '').trim(), kind: values.get('kind') as Account['kind'], currency, openingMinor, createdAt: Date.now() };
   if (!account.name) { if (error) error.textContent = 'Give this account a name.'; return; }
+  if (data.accounts.some(item => accountNameKey(item.name) === accountNameKey(account.name))) {
+    if (error) error.textContent = 'Use a unique account name so CSV entries always return to the right ledger.';
+    document.querySelector<HTMLInputElement>('#account-name')?.focus();
+    return;
+  }
   await db.put('accounts', account); data.accounts.push(account); selectedId = account.id; document.querySelector<HTMLDialogElement>('#account-dialog')?.close(); shell(); announce(`${account.name} created on this device.`);
 }
 
@@ -406,4 +410,9 @@ async function start(): Promise<void> {
 
 window.addEventListener('online', updateConnection);
 window.addEventListener('offline', updateConnection);
+app.addEventListener('click', event => {
+  if (!(event.target instanceof Element)) return;
+  const control = event.target.closest<HTMLElement>('[data-action]');
+  if (control && app.contains(control)) void handleAction(control.dataset.action ?? '');
+});
 void start();

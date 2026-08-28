@@ -49,7 +49,7 @@ Exports use this header:
 date,account,account_type,currency,amount,note
 ```
 
-Imports require `date`, `account`, `amount`, and `note`. Dates use `YYYY-MM-DD`; account names must already exist; negative amounts are spending and positive amounts are money received. Import validates all rows before writing any of them.
+Imports require `date`, `account`, `amount`, and `note`. Dates use `YYYY-MM-DD`; account names must already exist and are unique regardless of case or repeated spaces; negative amounts are spending and positive amounts are money received. Import validates all rows before writing any of them, and safely rejects ambiguous names from older backups instead of guessing a ledger.
 
 ## Data and recovery
 

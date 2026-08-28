@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import staticWebAppConfig from '../public/staticwebapp.config.json';
+
+const serviceWorker = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 
 interface StaticWebAppConfig {
   routes: Array<{ route: string; headers?: Record<string, string> }>;
@@ -21,5 +24,11 @@ describe('static deployment response policy', () => {
     expect(config.globalHeaders['Content-Security-Policy']).toContain("default-src 'self'");
     expect(config.globalHeaders['Permissions-Policy']).toContain('camera=()');
     expect(config.globalHeaders['X-Content-Type-Options']).toBe('nosniff');
+  });
+
+  it('requires the production build to inject executable shell assets and a cache version', () => {
+    expect(serviceWorker).toContain("const BUILD_ASSETS = [/* __APP_SHELL_ASSETS__ */]");
+    expect(serviceWorker).toContain("pocket-reconcile-__BUILD_VERSION__");
+    expect(serviceWorker).toContain('...BUILD_ASSETS');
   });
 });

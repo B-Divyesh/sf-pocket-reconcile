@@ -65,7 +65,7 @@ img { display: block; max-width: 100%; }
 .skip-link:focus { transform: translateY(0); }
 
 .app-header { max-width: 1160px; margin: 0 auto; min-height: 92px; padding: max(18px, env(safe-area-inset-top)) 32px 14px; display: flex; align-items: center; justify-content: space-between; }
-.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-family: var(--serif); line-height: .92; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.brand { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-family: var(--serif); line-height: .92; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
 .brand em { color: var(--fern); font-style: italic; font-weight: 400; }
 .brand svg { width: 42px; height: 42px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .header-tools { display: flex; align-items: center; gap: 12px; }
@@ -243,6 +243,7 @@ dialog form { display: grid; gap: 12px; padding: clamp(22px, 5vw, 34px); }
 .app-footer { max-width: 1080px; margin: 0 auto; padding: 28px 0 max(32px, env(safe-area-inset-bottom)); display: flex; justify-content: space-between; gap: 24px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; }
 .app-footer p { margin: 0; }
 .app-footer p:last-child { display: flex; flex-wrap: wrap; gap: 18px; }
+.app-footer a { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; }
 .fatal { max-width: 640px; }
 
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
