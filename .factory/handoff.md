@@ -5,6 +5,7 @@
 - Repaired source commit: `f2aacbe61db453e365359a03905a3bbd4e46f595`
 - Artifact: `pwa-offline`, static `dist/`
 - Completed: 2026-08-28
+- Deployed static revision: `62347b5` to <https://pocket-reconcile.sociobot.in/>
 
 ## Repair status
 
@@ -56,6 +57,12 @@ npm run build
   browser projects.
 - A 200-request parallel verification API check was recorded for the live
   Sociobot route: 200 HTTP 200 responses and zero `Retry-After` headers.
+- Deployment completed through the static work-order configuration. The live
+  `sw.js` now has version `pocket-reconcile-be41f865ba58` and lists
+  `app-BeJ3n0JR.css` plus `app-ItbdF3_5.js` in `BUILD_ASSETS`; the immutable
+  JavaScript response has the expected one-year immutable cache policy.
+- The full live Playwright suite passed 24/24 after deployment at both 390px
+  mobile and 1440px desktop, including the offline first-visit shell check.
 
 ## Remaining release blockers outside this static repository
 
@@ -85,7 +92,7 @@ npm run build
 PLAYWRIGHT_BASE_URL=https://pocket-reconcile.sociobot.in npm run test:e2e
 ```
 
-After deployment, confirm that the live `sw.js` contains the versioned
-`BUILD_ASSETS` list and repeat the checkout and verification-policy checks
-above. No sign-in, package-consumer, backend-concurrency, or health endpoint
-checks apply to this local-first static PWA.
+The live shell check is complete. Repeat the checkout and verification-policy
+checks once the factory-owned billing/API actions are complete. No sign-in,
+package-consumer, backend-concurrency, or health endpoint checks apply to this
+local-first static PWA.
