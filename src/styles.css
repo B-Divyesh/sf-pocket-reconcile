@@ -280,9 +280,10 @@ dialog form { display: grid; gap: 12px; padding: clamp(22px, 5vw, 34px); }
   .welcome h1 { order: 1; }
   .welcome .eyebrow { order: 0; }
   .welcome .lede { order: 2; }
-  .welcome .primary { order: 3; justify-self: start; }
-  .trust-list { order: 4; }
-  .hero-figure { order: 5; margin-top: 14px; }
+  .welcome .button-row { order: 3; justify-self: start; }
+  .welcome .field-hint { order: 4; }
+  .trust-list { order: 5; }
+  .hero-figure { order: 6; margin-top: 14px; }
   .ledger-head { display: grid; align-items: start; }
   .account-switcher { min-width: 0; }
   .ledger-grid, .backup-grid { grid-template-columns: 1fr; }
