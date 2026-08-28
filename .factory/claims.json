@@ -112,6 +112,13 @@
     "sandbox": "Fresh /demo ledger; try a case and whitespace variant of an existing account name, then assert it is rejected."
   },
   {
+    "id": "legacy-duplicate-csv",
+    "claim": "CSV import rejects an ambiguous account name from a legacy ledger without saving any row.",
+    "where": "README CSV format",
+    "test": "npm run test:claims -- --grep @claim:legacy-duplicate-csv",
+    "sandbox": "Fresh /demo ledger; insert a legacy account whose normalized name duplicates a sample account, import one CSV row for that name, assert the ambiguity error, and confirm that no entry was saved."
+  },
+  {
     "id": "exact-decimals",
     "claim": "Stores each supported amount in the currency's smallest unit.",
     "where": "README",

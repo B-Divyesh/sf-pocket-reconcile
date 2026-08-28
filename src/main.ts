@@ -165,7 +165,7 @@ function renderLedger(): string {
     </section>
     <div class="ledger-grid">
       <section class="work-sheet" aria-labelledby="quick-title">
-        <div class="section-heading"><div><p class="eyebrow">Quick entry</p><h2 id="quick-title">What changed?</h2></div></div>
+        <div class="section-heading"><div><p class="eyebrow">Quick entry</p><h2 id="quick-title">Add a ledger entry</h2></div></div>
         <form id="transaction-form" class="transaction-form">
           <fieldset><legend>Direction</legend><div class="segmented"><label><input type="radio" name="direction" value="spent" checked><span>Spent</span></label><label><input type="radio" name="direction" value="received"><span>Received</span></label></div></fieldset>
           <div class="amount-field"><label for="amount">Amount <span>${account.currency}</span></label><input id="amount" name="amount" inputmode="decimal" autocomplete="off" required placeholder="0${account.currency === 'JPY' ? '' : '.00'}"><p id="amount-error" class="field-error" aria-live="polite"></p></div>
@@ -223,17 +223,17 @@ function renderSettings(): string {
   return `<section class="page-head"><h1>Ledger settings</h1><p class="lede">Manage accounts, paper tone, and the local records on this device.</p></section>
     <div class="settings-list">
       <section><div><h2>Paper tone</h2><p>Choose a fixed paper tone or follow your device.</p></div><select id="theme-setting" aria-label="Paper tone"><option value="system">Follow device</option><option value="light">Day paper</option><option value="dark">Night paper</option></select></section>
-      <section class="accounts-setting"><div><h2>Accounts</h2><p>${data.accounts.length} local account${data.accounts.length === 1 ? '' : 's'}</p></div><div class="account-manage">${data.accounts.map(account => `<div><span><strong>${h(account.name)}</strong><small>${h(account.currency)} · ${h(account.kind)}</small></span><button type="button" class="quiet danger-text" data-delete-account="${account.id}">Delete</button></div>`).join('')}<button type="button" class="secondary" data-action="open-account">Add account</button></div></section>
+      <section class="accounts-setting"><div><h2>Accounts</h2><p>${data.accounts.length} local account${data.accounts.length === 1 ? '' : 's'}</p></div><div class="account-manage">${data.accounts.map(account => `<div><span><strong>${h(account.name)}</strong><small>${h(account.currency)} · ${h(account.kind)}</small></span><button type="button" class="quiet danger-text" data-delete-account="${account.id}" aria-label="Delete ${h(account.name)} account">Delete account</button></div>`).join('')}<button type="button" class="secondary" data-action="open-account">Add account</button></div></section>
       <section class="danger-zone"><div><h2>Erase this ledger</h2><p>Permanently deletes accounts, entries, and checks from this browser. Export a backup first.</p></div><button type="button" class="danger-button" data-action="erase-all">Erase all local data</button></section>
     </div>`;
 }
 
 function accountDialog(): string {
-  return `<dialog id="account-dialog"><form id="account-form" method="dialog"><div class="dialog-head"><div><p class="eyebrow">New account</p><h2>Add an account</h2></div><button type="button" class="icon-button" data-action="close-account" aria-label="Close">×</button></div><label for="account-name">Account name</label><input id="account-name" name="name" maxlength="40" required placeholder="Pocket cash"><div class="form-row"><div><label for="account-kind">Type</label><select id="account-kind" name="kind"><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select></div><div><label for="currency">Currency</label><select id="currency" name="currency">${currencies.map(value => `<option ${value === 'INR' ? 'selected' : ''}>${value}</option>`).join('')}</select></div></div><label for="opening">Balance right now</label><input id="opening" name="opening" inputmode="decimal" required value="0.00"><p class="field-hint">This becomes the starting measurement. Add only later changes.</p><p id="account-error" class="field-error" aria-live="polite"></p><button class="primary" type="submit">Create account</button></form></dialog>`;
+  return `<dialog id="account-dialog" aria-labelledby="account-dialog-title"><form id="account-form" method="dialog"><div class="dialog-head"><div><p class="eyebrow">New account</p><h2 id="account-dialog-title">Add an account</h2></div><button type="button" class="icon-button" data-action="close-account" aria-label="Close add account">×</button></div><label for="account-name">Account name</label><input id="account-name" name="name" maxlength="40" required placeholder="Pocket cash"><div class="form-row"><div><label for="account-kind">Type</label><select id="account-kind" name="kind"><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select></div><div><label for="currency">Currency</label><select id="currency" name="currency">${currencies.map(value => `<option ${value === 'INR' ? 'selected' : ''}>${value}</option>`).join('')}</select></div></div><label for="opening">Balance right now</label><input id="opening" name="opening" inputmode="decimal" required value="0.00"><p class="field-hint">This becomes the starting measurement. Add only later changes.</p><p id="account-error" class="field-error" aria-live="polite"></p><button class="primary" type="submit">Create account</button></form></dialog>`;
 }
 
 function deleteDialog(): string {
-  return `<dialog id="confirm-dialog"><form method="dialog"><div class="dialog-head"><div><p class="eyebrow">Permanent action</p><h2 id="confirm-title">Delete this record?</h2></div></div><p id="confirm-copy"></p><div class="button-row"><button id="confirm-delete" class="danger-button" value="confirm">Delete</button><button class="quiet" value="cancel">Keep it</button></div></form></dialog>`;
+  return `<dialog id="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog"><div class="dialog-head"><div><p class="eyebrow">Permanent action</p><h2 id="confirm-title">Confirm deletion</h2></div></div><p id="confirm-copy"></p><div class="button-row"><button id="confirm-delete" class="danger-button" value="confirm">Delete entry</button><button id="confirm-cancel" class="quiet" value="cancel">Keep entry</button></div></form></dialog>`;
 }
 
 function bindEvents(): void {
@@ -347,14 +347,14 @@ async function reconcile(event: SubmitEvent): Promise<void> {
 
 function confirmTransactionDelete(id: string): void {
   const item = data.transactions.find(value => value.id === id); if (!item) return;
-  showConfirm('Delete this entry?', `“${item.note}” will be removed from the expected balance.`, async () => {
+  showConfirm('Delete this entry?', `“${item.note}” will be removed from the expected balance.`, 'Delete entry', 'Keep entry', async () => {
     await db.delete('transactions', item.id); data.transactions = data.transactions.filter(value => value.id !== item.id); deletedTransaction = item; shell(); announce('Entry deleted.', { label: 'Undo', handler: 'undo-transaction' });
   });
 }
 
 function confirmAccountDelete(id: string): void {
   const account = data.accounts.find(value => value.id === id); if (!account) return;
-  showConfirm(`Delete ${account.name}?`, 'Its entries and balance-check history will also be permanently deleted.', async () => {
+  showConfirm(`Delete ${account.name}?`, 'Its entries and balance-check history will also be permanently deleted.', 'Delete account', 'Keep account', async () => {
     const transactionIds = data.transactions.filter(item => item.accountId === id).map(item => item.id);
     const checkIds = data.reconciliations.filter(item => item.accountId === id).map(item => item.id);
     await Promise.all([db.delete('accounts', id), ...transactionIds.map(key => db.delete('transactions', key)), ...checkIds.map(key => db.delete('reconciliations', key))]);
@@ -363,14 +363,16 @@ function confirmAccountDelete(id: string): void {
 }
 
 function confirmEraseAll(): void {
-  showConfirm('Erase the entire ledger?', `${data.accounts.length} accounts, ${data.transactions.length} entries, and ${data.reconciliations.length} checks will be permanently deleted from this browser.`, async () => { await eraseData(); data = { version: 1, accounts: [], transactions: [], reconciliations: [] }; selectedId = null; screen = 'ledger'; shell(); announce('All local ledger data erased.'); });
+  const countLabel = (count: number, singular: string, plural = `${singular}s`) => `${count} ${count === 1 ? singular : plural}`;
+  const summary = `${countLabel(data.accounts.length, 'account')}, ${countLabel(data.transactions.length, 'entry', 'entries')}, and ${countLabel(data.reconciliations.length, 'check')} will be permanently deleted from this browser.`;
+  showConfirm('Erase the entire ledger?', summary, 'Erase ledger', 'Keep ledger', async () => { await eraseData(); data = { version: 1, accounts: [], transactions: [], reconciliations: [] }; selectedId = null; screen = 'ledger'; shell(); announce('All local ledger data erased.'); });
 }
 
-function showConfirm(title: string, copy: string, action: () => Promise<void>): void {
+function showConfirm(title: string, copy: string, confirmLabel: string, cancelLabel: string, action: () => Promise<void>): void {
   const dialog = document.querySelector<HTMLDialogElement>('#confirm-dialog');
-  const titleNode = document.querySelector('#confirm-title'); const copyNode = document.querySelector('#confirm-copy'); const button = document.querySelector<HTMLButtonElement>('#confirm-delete');
-  if (!dialog || !titleNode || !copyNode || !button) return;
-  titleNode.textContent = title; copyNode.textContent = copy;
+  const titleNode = document.querySelector('#confirm-title'); const copyNode = document.querySelector('#confirm-copy'); const button = document.querySelector<HTMLButtonElement>('#confirm-delete'); const cancelButton = document.querySelector<HTMLButtonElement>('#confirm-cancel');
+  if (!dialog || !titleNode || !copyNode || !button || !cancelButton) return;
+  titleNode.textContent = title; copyNode.textContent = copy; button.textContent = confirmLabel; cancelButton.textContent = cancelLabel;
   button.onclick = event => { event.preventDefault(); dialog.close(); void action(); };
   dialog.showModal(); button.focus();
 }

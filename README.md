@@ -23,7 +23,7 @@ Open <https://pocket-reconcile.sociobot.in/demo> or select **Try it with sample 
 
 ## Run locally
 
-Requires Node.js 20 or newer.
+Requires Node.js 20.19+ or 22.12+.
 
 ```sh
 npm install
@@ -54,7 +54,7 @@ Imports require `date`, `account`, `amount`, and `note`. Dates use `YYYY-MM-DD`.
 
 ## Data and recovery
 
-Records remain in this browser. A full `.pocket` backup contains accounts, entries, and balance checks. The encrypted backup includes a format version for future restores. Its password is not stored and cannot be recovered. CSV is portable but does not include opening balances or balance-check history.
+Records remain in this browser. A full `.pocket` backup contains accounts, entries, and balance checks. Its password is not stored and cannot be recovered. CSV files include entries, but omit opening balances and balance-check history.
 
 See [the design thesis](.factory/design.md), [demo details](.factory/demo.md), [claim checks](.factory/claims.json), [privacy policy](privacy/index.html), [terms](terms/index.html), and [factory handoff](.factory/handoff.md).
 

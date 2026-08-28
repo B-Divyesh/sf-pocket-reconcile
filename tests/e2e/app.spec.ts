@@ -78,6 +78,55 @@ test('@claim:account-name-uniqueness rejects case and whitespace variants of an 
   await expect(page.locator('#account-dialog')).toBeVisible();
 });
 
+test('@claim:legacy-duplicate-csv rejects an ambiguous legacy account without saving the row', async ({ page }) => {
+  await page.goto('/demo');
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('demo:pocket-reconcile');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction('accounts', 'readwrite');
+      transaction.objectStore('accounts').put({
+        id: 'legacy-weekend-cash',
+        name: '  WEEKEND   CASH  ',
+        kind: 'cash',
+        currency: 'INR',
+        openingMinor: 0,
+        createdAt: 1
+      });
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.locator('#csv-import').setInputFiles({
+    name: 'legacy-duplicate.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('date,account,amount,note\n2026-08-28,Weekend cash,7.00,Must not import')
+  });
+  await expect(page.getByRole('status')).toContainText('Row 2: account “Weekend cash” is ambiguous. Rename duplicate accounts before importing.');
+  const entries = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('demo:pocket-reconcile');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const values = await new Promise<Array<{ note: string }>>((resolve, reject) => {
+      const request = database.transaction('transactions').objectStore('transactions').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return values;
+  });
+  expect(entries).toHaveLength(3);
+  expect(entries.map(entry => entry.note)).not.toContain('Must not import');
+});
+
 test('@claim:entry-delete deletes and restores an individual entry', async ({ page }) => {
   await page.goto('/demo');
   await page.getByLabel('Received').check();
@@ -105,6 +154,31 @@ test('supports the primary keyboard path and dialog focus', async ({ page }) => 
   await expect(page.getByLabel('Account name')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Create my first account' })).toBeFocused();
+});
+
+test('names every dialog and focuses target-specific actions', async ({ page }) => {
+  await page.goto('/demo');
+
+  await page.getByRole('button', { name: 'Add account' }).click();
+  await expect(page.getByRole('dialog', { name: 'Add an account' })).toBeVisible();
+  await expect(page.getByLabel('Account name')).toBeFocused();
+  await page.getByRole('button', { name: 'Close add account' }).click();
+
+  await page.getByRole('button', { name: 'Delete Saturday market entry' }).click();
+  await expect(page.getByRole('dialog', { name: 'Delete this entry?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete entry' })).toBeFocused();
+  await page.getByRole('button', { name: 'Keep entry' }).click();
+
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Delete Weekend cash account' }).click();
+  await expect(page.getByRole('dialog', { name: 'Delete Weekend cash?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete account' })).toBeFocused();
+  await page.getByRole('button', { name: 'Keep account' }).click();
+
+  await page.getByRole('button', { name: 'Erase all local data' }).click();
+  await expect(page.getByRole('dialog', { name: 'Erase the entire ledger?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Erase ledger' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Keep ledger' })).toBeVisible();
 });
 
 test('makes no third-party requests in the ordinary free workflow', async ({ page }) => {
@@ -199,19 +273,21 @@ test('keeps the first screen readable on mobile and gives both desktop actions e
   }
 });
 
-test('has no serious accessibility violations on first run', async ({ page }) => {
+test('has no serious accessibility violations or console errors across every route', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.goto('/');
-  const results = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+  for (const path of ['/', '/demo', '/privacy/', '/terms/', '/404.html', '/offline.html']) {
+    await page.goto(path);
+    const results = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
+    expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? '')), path).toEqual([]);
+  }
   expect(errors).toEqual([]);
 });
 
-test('dark treatment and legal pages meet the accessibility baseline', async ({ page }) => {
+test('dark reduced-motion treatment meets the accessibility baseline across every route', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
-  for (const path of ['/', '/privacy/', '/terms/']) {
+  for (const path of ['/', '/demo', '/privacy/', '/terms/', '/404.html', '/offline.html']) {
     await page.goto(path);
     const results = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? '')), path).toEqual([]);
@@ -524,7 +600,7 @@ test('@claim:erase-ledger erases every local ledger record after confirmation', 
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'Erase all local data' }).click();
-  await expect(page.getByText('2 accounts, 3 entries, and 1 checks will be permanently deleted')).toBeVisible();
+  await expect(page.getByText('2 accounts, 3 entries, and 1 check will be permanently deleted')).toBeVisible();
   await page.locator('#confirm-delete').click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
   const counts = await page.evaluate(async () => {
