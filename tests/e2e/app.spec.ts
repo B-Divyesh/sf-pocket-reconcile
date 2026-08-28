@@ -3,8 +3,8 @@ import AxeBuilder from '@axe-core/playwright';
 
 test('creates an account, records an entry, and reconciles exactly', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bring the numbers back into agreement.');
-  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
+  await page.getByRole('button', { name: 'Create my first account' }).click();
   await page.getByLabel('Account name').fill('Pocket cash');
   await page.getByLabel('Balance right now').fill('100.00');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -21,7 +21,7 @@ test('creates an account, records an entry, and reconciles exactly', async ({ pa
 
 test('keeps the maximum accepted decimal amount cent-exact in the ledger', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByRole('button', { name: 'Create my first account' }).click();
   await page.getByLabel('Account name').fill('Boundary wallet');
   await page.getByLabel('Currency').selectOption('USD');
   await page.getByLabel('Balance right now').fill('90071992547409.91');
@@ -31,7 +31,7 @@ test('keeps the maximum accepted decimal amount cent-exact in the ledger', async
 
 test('rejects an impossible CSV date without changing the ledger', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByRole('button', { name: 'Create my first account' }).click();
   await page.getByLabel('Account name').fill('Pocket cash');
   await page.getByLabel('Balance right now').fill('100.00');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -49,7 +49,7 @@ test('rejects an impossible CSV date without changing the ledger', async ({ page
 
 test('rejects duplicate account names before they can make CSV assignment ambiguous', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByRole('button', { name: 'Create my first account' }).click();
   await page.getByLabel('Account name').fill('Pocket cash');
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.getByRole('button', { name: 'Add account' }).click();
@@ -62,7 +62,7 @@ test('rejects duplicate account names before they can make CSV assignment ambigu
 
 test('undo restores a deleted entry and its balance', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByRole('button', { name: 'Create my first account' }).click();
   await page.getByLabel('Account name').fill('Pocket cash');
   await page.getByLabel('Balance right now').fill('90.00');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -86,11 +86,11 @@ test('supports the primary keyboard path and dialog focus', async ({ page }) => 
   await expect(page.getByRole('link', { name: 'Skip to ledger' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('main')).toBeFocused();
-  await page.getByRole('button', { name: 'Plant my first account' }).focus();
+  await page.getByRole('button', { name: 'Create my first account' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByLabel('Account name')).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Plant my first account' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Create my first account' })).toBeFocused();
 });
 
 test('makes no third-party requests in the ordinary free workflow', async ({ page }) => {
@@ -169,7 +169,7 @@ test('dark treatment and legal pages meet the accessibility baseline', async ({ 
 });
 
 test('first-visit app shell opens offline with the browser HTTP cache disabled', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/demo');
   await page.waitForFunction(() => navigator.serviceWorker?.ready);
   await page.waitForFunction(() => navigator.serviceWorker?.controller);
   const cachedShell = await page.evaluate(async () => {
@@ -185,4 +185,81 @@ test('first-visit app shell opens offline with the browser HTTP cache disabled',
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.getByText('Offline · ready')).toBeVisible();
+});
+
+test('@claim:demo-sandbox opens realistic sample data in its own namespace and discards it on exit', async ({ page }) => {
+  await page.goto('/demo');
+  await expect(page.getByRole('heading', { level: 1, name: 'Weekend cash' })).toBeVisible();
+  await expect(page.getByText('Saturday market', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Demo controls')).toContainText('Demo — sample data, nothing is saved.');
+  const namespaces = await page.evaluate(async () => ({
+    databases: (await indexedDB.databases()).map(item => item.name),
+    keys: Object.keys(localStorage)
+  }));
+  expect(namespaces.databases).toContain('demo:pocket-reconcile');
+  expect(namespaces.keys.every(key => key.startsWith('demo:'))).toBe(true);
+  await page.getByRole('button', { name: 'Start for real' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reconcile cash and card balances.');
+  await expect.poll(() => page.evaluate(async () => (await indexedDB.databases()).map(item => item.name))).not.toContain('demo:pocket-reconcile');
+});
+
+test('@claim:offline-reload works offline after the first demo visit', async ({ page, context }) => {
+  await page.goto('/demo');
+  await page.waitForFunction(() => navigator.serviceWorker?.controller);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Weekend cash' })).toBeVisible();
+  await expect(page.getByText('Offline · ready')).toBeVisible();
+});
+
+test('@claim:csv-export exports every sample transaction as CSV', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export CSV' }).click();
+  const csv = await (await download).createReadStream().then(async stream => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks).toString('utf8');
+  });
+  expect(csv.split('\n')).toHaveLength(4);
+  expect(csv).toContain('Saturday market');
+  expect(csv).toContain('Daily card');
+});
+
+test('@claim:encrypted-backup exports a password-encrypted demo pack', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.getByLabel('New backup password').fill('demo-safe-password');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download encrypted backup' }).click();
+  const contents = await (await download).createReadStream().then(async stream => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks).toString('utf8');
+  });
+  expect(contents).toContain('pocket-reconcile-encrypted');
+  expect(contents).not.toContain('Weekend cash');
+  expect(contents).not.toContain('Saturday market');
+});
+
+test('@claim:local-records keeps the demo flow on the product origin with no bank login', async ({ page }) => {
+  const origins = new Set<string>();
+  page.on('request', request => origins.add(new URL(request.url()).origin));
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Checks' }).click();
+  await page.getByRole('button', { name: 'Ledger' }).click();
+  expect([...origins]).toEqual(['http://127.0.0.1:4173']);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+});
+
+test('@claim:exact-decimals keeps the accepted maximum decimal amount exact in demo mode', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Add account' }).click();
+  await page.getByLabel('Account name').fill('Maximum wallet');
+  await page.getByLabel('Currency').selectOption('USD');
+  await page.getByLabel('Balance right now').fill('90071992547409.91');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('$90,071,992,547,409.91', { exact: true }).first()).toBeVisible();
 });

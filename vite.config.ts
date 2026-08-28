@@ -17,7 +17,7 @@ async function injectServiceWorkerShell(): Promise<void> {
 
   const source = await readFile(new URL('public/sw.js', root), 'utf8');
   const shellFiles = [
-    'index.html', 'offline.html', 'privacy/index.html', 'terms/index.html',
+    'index.html', 'demo/index.html', '404.html', 'offline.html', 'privacy/index.html', 'terms/index.html',
     'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
     'icons/icon-maskable-512.png', 'assets/pressed-ledger-384.webp',
     'assets/pressed-ledger.webp', 'assets/pressed-ledger.jpg',
@@ -42,6 +42,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         app: new URL('index.html', import.meta.url).pathname,
+        demo: new URL('demo/index.html', import.meta.url).pathname,
+        notFound: new URL('404.html', import.meta.url).pathname,
         privacy: new URL('privacy/index.html', import.meta.url).pathname,
         terms: new URL('terms/index.html', import.meta.url).pathname,
         offline: new URL('offline.html', import.meta.url).pathname

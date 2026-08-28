@@ -8,6 +8,8 @@ interface StaticWebAppConfig {
   routes: Array<{ route: string; headers?: Record<string, string> }>;
   globalHeaders: Record<string, string>;
   mimeTypes: Record<string, string>;
+  responseOverrides?: Record<string, { rewrite?: string }>;
+  navigationFallback?: unknown;
 }
 
 describe('static deployment response policy', () => {
@@ -30,5 +32,16 @@ describe('static deployment response policy', () => {
     expect(serviceWorker).toContain("const BUILD_ASSETS = [/* __APP_SHELL_ASSETS__ */]");
     expect(serviceWorker).toContain("pocket-reconcile-__BUILD_VERSION__");
     expect(serviceWorker).toContain('...BUILD_ASSETS');
+  });
+
+  it('uses a designed 404 response instead of rewriting unknown routes to the ledger shell', () => {
+    expect(config.navigationFallback).toBeUndefined();
+    expect(config.responseOverrides?.['404']?.rewrite).toBe('/404.html');
+    expect(readFileSync(new URL('../404.html', import.meta.url), 'utf8')).toContain('Return to the ledger');
+  });
+
+  it('preloads the direct demo route for offline sample use', () => {
+    expect(serviceWorker).toContain("'/demo/'");
+    expect(readFileSync(new URL('../demo/index.html', import.meta.url), 'utf8')).toContain('Demo — Pocket Reconcile');
   });
 });

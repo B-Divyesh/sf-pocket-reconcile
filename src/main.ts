@@ -1,22 +1,23 @@
 import './styles.css';
 import type { Account, AppData, Currency, Reconciliation, Transaction } from './types';
-import { db, eraseData, loadData, replaceData } from './db';
+import { configureDatabase, db, discardDatabase, eraseData, loadData, replaceData } from './db';
 import { accountNameKey, exportCsv, parseCsv } from './csv';
 import { decryptBackup, encryptBackup } from './backup';
 import { formatMoney, moneyInput, parseMoney } from './money';
-import { cachedLicense, captureLicenseFromUrl, checkoutUrl, clearLicense, storeLicense, verifyLicense, type LicenseState } from './license';
+import { sampleData } from './demo';
 
-type Screen = 'ledger' | 'history' | 'backup' | 'field-kit' | 'settings';
+type Screen = 'ledger' | 'history' | 'backup' | 'settings';
 
 const appNode = document.querySelector<HTMLDivElement>('#app');
 if (!appNode) throw new Error('App root is missing.');
 const app: HTMLDivElement = appNode;
 
 let data: AppData = { version: 1, accounts: [], transactions: [], reconciliations: [] };
-let selectedId = localStorage.getItem('pr:selected-account');
+const demoMode = location.pathname === '/demo' || location.pathname === '/demo/' || new URL(location.href).searchParams.get('demo') === '1';
+const storageKey = (key: string) => demoMode ? `demo:${key}` : key;
+let selectedId = localStorage.getItem(storageKey('pr:selected-account'));
 let screen: Screen = 'ledger';
 let reconcileOpen = false;
-let license: LicenseState = cachedLicense();
 let deletedTransaction: Transaction | null = null;
 let toastTimer = 0;
 
@@ -77,12 +78,12 @@ function shell(): void {
       ${navButton('ledger', '01', 'Ledger')}
       ${navButton('history', '02', 'Checks')}
       ${navButton('backup', '03', 'Backup')}
-      ${navButton('field-kit', '04', 'Field Kit')}
-      ${navButton('settings', '05', 'Settings')}
+      ${navButton('settings', '04', 'Settings')}
     </nav>
+    ${demoMode ? `<aside class="demo-banner" aria-label="Demo controls"><strong>Demo — sample data, nothing is saved.</strong><span>Try entries and balance checks safely.</span><button type="button" class="quiet" data-action="reset-demo">Reset demo</button><button type="button" class="secondary" data-action="start-real">Start for real</button></aside>` : ''}
     <main id="main" tabindex="-1">${renderScreen()}</main>
     <footer class="app-footer">
-      <p>Your records stay on this device.</p>
+      <p>Private balance checks for a few accounts.</p>
       <p><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><span>Generated botanical artwork</span></p>
     </footer>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -99,7 +100,6 @@ function navButton(id: Screen, number: string, label: string): string {
 function renderScreen(): string {
   if (screen === 'history') return renderHistory();
   if (screen === 'backup') return renderBackup();
-  if (screen === 'field-kit') return renderFieldKit();
   if (screen === 'settings') return renderSettings();
   return renderLedger();
 }
@@ -109,10 +109,11 @@ function renderLedger(): string {
     <section class="welcome" aria-labelledby="welcome-title">
       <div class="welcome-copy">
         <p class="eyebrow">A two-minute balance check</p>
-        <h1 id="welcome-title">Bring the numbers back into agreement.</h1>
-        <p class="lede">Record the handful of things your bank or memory missed, count what is actually there, and close the check. No bank login. No cloud ledger.</p>
-        <button class="primary" type="button" data-action="open-account">Plant my first account</button>
-        <ul class="trust-list" aria-label="Product promises"><li>Works offline</li><li>Exact decimal arithmetic</li><li>Encrypted backups</li></ul>
+        <h1 id="welcome-title">Reconcile cash and card balances.</h1>
+        <p class="lede">For privacy-minded budgeters who track a few accounts from a phone.</p>
+        <div class="button-row"><a class="primary" href="/demo">Try it with sample data</a><button class="secondary" type="button" data-action="open-account">Create my first account</button></div>
+        <p class="field-hint">The sample opens a working ledger. It never mixes with your records.</p>
+        <ul class="trust-list" aria-label="Product facts"><li>Works offline after first visit</li><li>No bank login</li><li>Export CSV or encrypted backup</li></ul>
       </div>
       <figure class="hero-figure"><picture><source srcset="/assets/pressed-ledger-384.webp 384w, /assets/pressed-ledger.webp 768w" sizes="(max-width: 760px) calc(100vw - 48px), 465px" type="image/webp"><img src="/assets/pressed-ledger.jpg" width="768" height="512" alt="An open field notebook with a fern aligned across two ledger columns" fetchpriority="high" decoding="async"></picture><figcaption>Observe · record · reconcile</figcaption></figure>
     </section>`;
@@ -120,7 +121,7 @@ function renderLedger(): string {
   const account = selectedAccount();
   if (!account) return '<h1>Ledger</h1><p>No active account is available.</p>';
   selectedId = account.id;
-  localStorage.setItem('pr:selected-account', account.id);
+  localStorage.setItem(storageKey('pr:selected-account'), account.id);
   const transactions = accountTransactions(account.id);
   const reconciliations = accountReconciliations(account.id);
   const expected = expectedBalance(account, transactions, reconciliations);
@@ -182,21 +183,15 @@ function renderBackup(): string {
   return `<section class="page-head"><p class="eyebrow">Field guide 03</p><h1>Pack and restore</h1><p class="lede">Your browser is the only home for this ledger. Keep a copy somewhere you control.</p></section>
     <div class="backup-grid">
       <section class="backup-block"><span class="plate-number">Plate A</span><h2>Portable CSV</h2><p>Exports transaction rows for spreadsheets. Account opening balances and check history are not included.</p><button class="secondary" type="button" data-action="export-csv" ${data.transactions.length ? '' : 'disabled'}>Export CSV</button><label class="file-button">Import CSV<input id="csv-import" type="file" accept=".csv,text/csv"></label><details><summary>Required CSV columns</summary><code>date,account,amount,note</code><p>Account names must already exist. Use negative amounts for spending.</p></details></section>
-      <section class="backup-block featured"><span class="plate-number">Plate B · complete</span><h2>Encrypted field pack</h2><p>Includes all ${count} local records. AES-256-GCM encryption happens on this device; the password is never stored.</p><form id="backup-form"><label for="backup-password">New backup password <span>8+ characters</span></label><input id="backup-password" name="password" type="password" minlength="8" autocomplete="new-password" required><button class="primary" type="submit" ${count ? '' : 'disabled'}>Download encrypted backup</button></form><hr><label class="file-button">Choose backup to restore<input id="backup-import" type="file" accept=".pocket,.json,application/json"></label><div id="restore-password-wrap" hidden><label for="restore-password">Backup password</label><input id="restore-password" type="password" autocomplete="current-password"><button class="secondary" type="button" data-action="restore-backup">Replace local ledger</button></div><p id="backup-error" class="field-error" aria-live="polite"></p><p class="fine-print">No password recovery is possible. Test important backups on another browser profile.</p></section>
+      <section class="backup-block featured"><span class="plate-number">Plate B · complete</span><h2>Encrypted field pack</h2><p>Includes all ${count} local records. Password encryption happens on this device; the password is never stored.</p><form id="backup-form"><label for="backup-password">New backup password <span>8+ characters</span></label><input id="backup-password" name="password" type="password" minlength="8" autocomplete="new-password" required><button class="primary" type="submit" ${count ? '' : 'disabled'}>Download encrypted backup</button></form><hr><label class="file-button">Choose backup to restore<input id="backup-import" type="file" accept=".pocket,.json,application/json"></label><div id="restore-password-wrap" hidden><label for="restore-password">Backup password</label><input id="restore-password" type="password" autocomplete="current-password"><button class="secondary" type="button" data-action="restore-backup">Replace local ledger</button></div><p id="backup-error" class="field-error" aria-live="polite"></p><p class="fine-print">No password recovery is possible. Test important backups on another browser profile.</p></section>
     </div>`;
 }
 
-function renderFieldKit(): string {
-  return `<section class="field-kit-head"><div><p class="eyebrow">A one-time field upgrade</p><h1>Keep more ledgers in the same pocket.</h1><p class="lede">The free edition includes two accounts, every reconciliation tool, CSV, and encrypted backups. Field Kit supports the product and removes the account limit.</p><p class="price"><strong>₹499</strong><span>one time</span></p><a class="primary button-link" href="${checkoutUrl()}">Buy Field Kit</a><p class="merchant">Secure checkout by Sociobot/Dodo, the merchant of record. Refunds are handled there.</p></div><div class="kit-card"><p class="eyebrow">Field Kit includes</p><ul><li><span>∞</span><div><strong>Unlimited accounts</strong><p>Keep cash, cards, and travel wallets separate.</p></div></li><li><span>◐</span><div><strong>Manual appearance</strong><p>Keep light or night paper independent of your device.</p></div></li><li><span>↗</span><div><strong>Future Field Kit additions</strong><p>One purchase for this product, not a subscription.</p></div></li></ul></div></section>
-    <section class="restore-license"><div><p class="eyebrow">${license.valid ? 'License active' : 'Already purchased?'}</p><h2>${license.valid ? 'Field Kit is pressed into this device.' : 'Restore your field key'}</h2><p>${license.notice ? h(license.notice) : license.valid ? 'Unlimited accounts and manual appearance are unlocked.' : 'Paste the license token from your receipt. Verification needs a connection once.'}</p></div>${license.valid ? `<button class="quiet danger-text" type="button" data-action="remove-license">Remove from device</button>` : `<form id="license-form"><label for="license-token">License token</label><div><input id="license-token" name="token" autocomplete="off" required><button class="secondary" type="submit">Verify license</button></div><p id="license-error" class="field-error" aria-live="polite"></p></form>`}</section>
-    <p class="legal-line">By purchasing, you agree to the <a href="/terms/">terms</a>. Learn how license verification works in the <a href="/privacy/">privacy policy</a>.</p>`;
-}
-
 function renderSettings(): string {
-  return `<section class="page-head"><p class="eyebrow">Field guide 05</p><h1>Notebook settings</h1><p class="lede">Manage accounts, paper tone, and the local records on this device.</p></section>
+  return `<section class="page-head"><p class="eyebrow">Field guide 04</p><h1>Notebook settings</h1><p class="lede">Manage accounts, paper tone, and the local records on this device.</p></section>
     <div class="settings-list">
-      <section><div><h2>Paper tone</h2><p>${license.valid ? 'Field Kit lets you choose a fixed tone.' : 'Free edition follows your device. Field Kit unlocks a fixed choice.'}</p></div><select id="theme-setting" ${license.valid ? '' : 'disabled'} aria-label="Paper tone"><option value="system">Follow device</option><option value="light">Day paper</option><option value="dark">Night paper</option></select></section>
-      <section class="accounts-setting"><div><h2>Accounts</h2><p>${data.accounts.length} of ${license.valid ? 'unlimited' : '2 free'} used</p></div><div class="account-manage">${data.accounts.map(account => `<div><span><strong>${h(account.name)}</strong><small>${h(account.currency)} · ${h(account.kind)}</small></span><button type="button" class="quiet danger-text" data-delete-account="${account.id}">Delete</button></div>`).join('')}<button type="button" class="secondary" data-action="open-account">Add account</button></div></section>
+      <section><div><h2>Paper tone</h2><p>Choose a fixed paper tone or follow your device.</p></div><select id="theme-setting" aria-label="Paper tone"><option value="system">Follow device</option><option value="light">Day paper</option><option value="dark">Night paper</option></select></section>
+      <section class="accounts-setting"><div><h2>Accounts</h2><p>${data.accounts.length} local account${data.accounts.length === 1 ? '' : 's'}</p></div><div class="account-manage">${data.accounts.map(account => `<div><span><strong>${h(account.name)}</strong><small>${h(account.currency)} · ${h(account.kind)}</small></span><button type="button" class="quiet danger-text" data-delete-account="${account.id}">Delete</button></div>`).join('')}<button type="button" class="secondary" data-action="open-account">Add account</button></div></section>
       <section class="danger-zone"><div><h2>Erase this notebook</h2><p>Permanently deletes accounts, entries, and checks from this browser. Export a backup first.</p></div><button type="button" class="danger-button" data-action="erase-all">Erase all local data</button></section>
     </div>`;
 }
@@ -223,14 +218,12 @@ function bindEvents(): void {
   document.querySelector<HTMLFormElement>('#backup-form')?.addEventListener('submit', event => void exportBackup(event));
   document.querySelector<HTMLInputElement>('#csv-import')?.addEventListener('change', event => void importCsvFile(event));
   document.querySelector<HTMLInputElement>('#backup-import')?.addEventListener('change', showRestorePassword);
-  document.querySelector<HTMLFormElement>('#license-form')?.addEventListener('submit', event => void restoreLicense(event));
   const themeSelect = document.querySelector<HTMLSelectElement>('#theme-setting');
-  if (themeSelect) { themeSelect.value = localStorage.getItem('pr:theme') ?? 'system'; themeSelect.addEventListener('change', () => { localStorage.setItem('pr:theme', themeSelect.value); applyTheme(); }); }
+  if (themeSelect) { themeSelect.value = localStorage.getItem(storageKey('pr:theme')) ?? 'system'; themeSelect.addEventListener('change', () => { localStorage.setItem(storageKey('pr:theme'), themeSelect.value); applyTheme(); }); }
 }
 
 async function handleAction(action: string): Promise<void> {
   if (action === 'open-account') {
-    if (!license.valid && data.accounts.length >= 2) { screen = 'field-kit'; shell(); announce('The free edition includes two accounts. Field Kit removes the limit.'); return; }
     const dialog = document.querySelector<HTMLDialogElement>('#account-dialog'); dialog?.showModal(); document.querySelector<HTMLInputElement>('#account-name')?.focus();
   }
   if (action === 'close-account') document.querySelector<HTMLDialogElement>('#account-dialog')?.close();
@@ -238,9 +231,10 @@ async function handleAction(action: string): Promise<void> {
   if (action === 'cancel-reconcile') { reconcileOpen = false; shell(); }
   if (action === 'export-csv') { download(`pocket-reconcile-${today()}.csv`, exportCsv(data), 'text/csv;charset=utf-8'); announce('CSV exported.'); }
   if (action === 'restore-backup') await restoreBackup();
-  if (action === 'remove-license') { clearLicense(); license = cachedLicense(); applyTheme(); shell(); announce('License removed from this device.'); }
   if (action === 'toggle-theme') toggleTheme();
   if (action === 'erase-all') confirmEraseAll();
+  if (action === 'reset-demo' && demoMode) await resetDemo();
+  if (action === 'start-real' && demoMode) { await discardDatabase(); location.assign('/'); }
   if (action === 'undo-transaction' && deletedTransaction) { await db.put('transactions', deletedTransaction); data.transactions.push(deletedTransaction); deletedTransaction = null; shell(); announce('Entry restored.'); }
   if (action === 'reload-update') location.reload();
 }
@@ -366,23 +360,27 @@ async function restoreBackup(): Promise<void> {
   } catch (reason) { if (error) error.textContent = reason instanceof Error ? reason.message : 'Could not restore the backup.'; }
 }
 
-async function restoreLicense(event: SubmitEvent): Promise<void> {
-  event.preventDefault(); const token = String(new FormData(event.currentTarget as HTMLFormElement).get('token') ?? '').trim(); const error = document.querySelector('#license-error');
-  if (!token) return; storeLicense(token); license = await verifyLicense(true);
-  if (!license.valid) { if (error) error.textContent = license.notice ?? 'This license is not active.'; return; }
-  applyTheme(); shell(); announce('Field Kit restored on this device.');
-}
-
 function applyTheme(): void {
-  const setting = license.valid ? localStorage.getItem('pr:theme') ?? 'system' : 'system';
+  const setting = localStorage.getItem(storageKey('pr:theme')) ?? 'system';
   document.documentElement.dataset.theme = setting;
 }
 
 function toggleTheme(): void {
-  if (!license.valid) { screen = 'field-kit'; shell(); announce('Manual paper tone is included in Field Kit.'); return; }
-  const current = localStorage.getItem('pr:theme') ?? 'system';
+  const current = localStorage.getItem(storageKey('pr:theme')) ?? 'system';
   const resolvedDark = current === 'dark' || (current === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  localStorage.setItem('pr:theme', resolvedDark ? 'light' : 'dark'); applyTheme(); shell();
+  localStorage.setItem(storageKey('pr:theme'), resolvedDark ? 'light' : 'dark'); applyTheme(); shell();
+}
+
+async function resetDemo(): Promise<void> {
+  const reset = sampleData();
+  await replaceData(reset);
+  data = reset;
+  selectedId = reset.accounts[0]?.id ?? null;
+  localStorage.setItem(storageKey('pr:selected-account'), selectedId ?? '');
+  screen = 'ledger';
+  reconcileOpen = false;
+  shell();
+  announce('Sample ledger reset.');
 }
 
 function updateConnection(): void {
@@ -392,14 +390,14 @@ function updateConnection(): void {
 }
 
 async function start(): Promise<void> {
-  captureLicenseFromUrl(); license = cachedLicense(); applyTheme();
-  const hash = location.hash.slice(1) as Screen; if (['ledger', 'history', 'backup', 'field-kit', 'settings'].includes(hash)) screen = hash;
+  configureDatabase(demoMode); applyTheme();
+  const hash = location.hash.slice(1) as Screen; if (['ledger', 'history', 'backup', 'settings'].includes(hash)) screen = hash;
   try { data = await loadData(); shell(); } catch {
     app.innerHTML = `<main id="main" class="fatal"><h1>Couldn’t open the local ledger.</h1><p>Your browser blocked IndexedDB. Allow site storage or try a non-private window, then reload.</p><button id="retry-storage" type="button">Try again</button></main>`;
     document.querySelector<HTMLButtonElement>('#retry-storage')?.addEventListener('click', () => location.reload());
     return;
   }
-  license = await verifyLicense(); applyTheme(); if (screen === 'field-kit') shell();
+  if (demoMode && !data.accounts.length) await resetDemo();
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');

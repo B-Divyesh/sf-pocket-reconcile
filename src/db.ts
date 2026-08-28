@@ -1,11 +1,18 @@
 import type { Account, AppData, Reconciliation, StoreName, Transaction } from './types';
 
-const DB_NAME = 'pocket-reconcile';
+const REAL_DB_NAME = 'pocket-reconcile';
+const DEMO_DB_NAME = 'demo:pocket-reconcile';
 const DB_VERSION = 1;
+let databaseName = REAL_DB_NAME;
+
+/** Switches the complete storage namespace before the first ledger read. */
+export function configureDatabase(demo: boolean): void {
+  databaseName = demo ? DEMO_DB_NAME : REAL_DB_NAME;
+}
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(databaseName, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains('accounts')) db.createObjectStore('accounts', { keyPath: 'id' });
@@ -58,4 +65,13 @@ export async function replaceData(data: AppData): Promise<void> {
 
 export async function eraseData(): Promise<void> {
   await Promise.all((['accounts', 'transactions', 'reconciliations'] as StoreName[]).map(store => db.clear(store)));
+}
+
+export function discardDatabase(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(databaseName);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error('Could not discard local storage.'));
+    request.onblocked = () => reject(new Error('Close other tabs before discarding local storage.'));
+  });
 }

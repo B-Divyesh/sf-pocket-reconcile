@@ -1,8 +1,8 @@
 # Pocket Reconcile
 
-Pocket Reconcile is a tiny, private balance-checking PWA for people who want to reconcile cash, cards, and manual transactions from a phone without connecting a bank or adopting a full budgeting system.
+Pocket Reconcile helps privacy-minded budgeters reconcile cash, cards, and a few manual transactions from a phone.
 
-It keeps accounts, integer-precise transaction amounts, and reconciliation history in IndexedDB on the current device. It works offline after the first visit and provides CSV plus password-encrypted full backups so the user owns the ledger.
+Records remain in this browser; no bank login is required. It works offline after the first visit and exports ledger entries as CSV or a password-encrypted backup.
 
 Live product: <https://pocket-reconcile.sociobot.in>
 
@@ -13,12 +13,15 @@ Live product: <https://pocket-reconcile.sociobot.in>
 - Count-to-balance checks with a mandatory note for discrepancies
 - A visible history of exact matches and carried-forward differences
 - CSV transaction import/export
-- AES-256-GCM encrypted full export and restore, with PBKDF2 key derivation
+- Password-encrypted full export and restore
 - Installable offline PWA with an explicit offline state and update prompt
-- Free edition with two accounts; one-time ₹499 Field Kit license for unlimited accounts and manual paper tone
-- No bank credentials, analytics, ads, cloud ledger, or third-party runtime assets
+- Local account storage and paper-tone choice
 
-Pocket Reconcile is a record-keeping utility, not financial advice, a bank feed, or an accounting system.
+It keeps supported money amounts in exact whole cents. Pocket Reconcile is a record-keeping utility, not financial advice, a bank feed, or an accounting system.
+
+## Try the sample ledger
+
+Open <https://pocket-reconcile.sociobot.in/demo> or select **Try it with sample data** on the first screen. The sample ledger includes two accounts, three transactions, and a completed check. Sample data never mixes with personal records; use **Reset demo** to restore it or **Start for real** to discard it.
 
 ## Run locally
 
@@ -53,11 +56,9 @@ Imports require `date`, `account`, `amount`, and `note`. Dates use `YYYY-MM-DD`;
 
 ## Data and recovery
 
-Browser records are not synced or recoverable by the maintainers. A full `.pocket` backup contains accounts, entries, and balance checks in a versioned JSON envelope encrypted locally with AES-256-GCM. Its password is not stored and cannot be recovered. CSV is intentionally portable but does not include opening balances or reconciliation history.
+Browser records are not synced or recoverable by the maintainers. A full `.pocket` backup contains accounts, entries, and balance checks in a versioned encrypted JSON envelope. Its password is not stored and cannot be recovered. CSV is intentionally portable but does not include opening balances or reconciliation history.
 
-License checkout and verification use only the Sociobot billing API. No payment provider is embedded in this repository, and there is no product ID to configure in the client.
-
-See [the design thesis](.factory/design.md), [privacy policy](privacy/index.html), [terms](terms/index.html), and [factory handoff](.factory/handoff.md).
+See [the design thesis](.factory/design.md), [demo details](.factory/demo.md), [claim checks](.factory/claims.json), [privacy policy](privacy/index.html), [terms](terms/index.html), and [factory handoff](.factory/handoff.md).
 
 ## Deploy
 

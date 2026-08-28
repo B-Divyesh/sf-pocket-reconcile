@@ -2,7 +2,7 @@ const VERSION = 'pocket-reconcile-__BUILD_VERSION__';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const BUILD_ASSETS = [/* __APP_SHELL_ASSETS__ */];
-const PRECACHE = ['/', '/offline.html', '/privacy/', '/terms/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/assets/pressed-ledger-384.webp', '/assets/pressed-ledger.webp', '/assets/pressed-ledger.jpg', ...BUILD_ASSETS];
+const PRECACHE = ['/', '/demo/', '/offline.html', '/privacy/', '/terms/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/assets/pressed-ledger-384.webp', '/assets/pressed-ledger.webp', '/assets/pressed-ledger.jpg', ...BUILD_ASSETS];
 
 self.addEventListener('install', event => {
   const requests = PRECACHE.map(url => new Request(url, { cache: 'reload' }));

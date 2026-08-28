@@ -81,6 +81,11 @@ img { display: block; max-width: 100%; }
 .index-nav button[aria-current="page"] { color: var(--ink); }
 .index-nav button[aria-current="page"]::after { content: ""; position: absolute; inset: auto 18px -1px; height: 3px; background: var(--fern); }
 
+.demo-banner { position: sticky; z-index: 9; top: 52px; width: min(1080px, calc(100% - 48px)); margin: 14px auto -18px; padding: 10px 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; border: 1px solid var(--moss); border-left: 4px solid var(--moss); background: var(--sheet); color: var(--ink); box-shadow: var(--shadow); font-size: 13px; }
+.demo-banner span { color: var(--muted); }
+.demo-banner .quiet, .demo-banner .secondary { min-height: 44px; padding: 8px 12px; }
+.demo-banner .quiet { margin-left: auto; }
+
 main { width: min(1080px, calc(100% - 48px)); margin: 0 auto; padding: 64px 0 80px; min-height: 64vh; }
 h1, h2, p { margin-top: 0; }
 h1, h2 { font-family: var(--serif); letter-spacing: -.025em; }
@@ -254,6 +259,7 @@ dialog form { display: grid; gap: 12px; padding: clamp(22px, 5vw, 34px); }
   .index-nav { justify-content: flex-start; }
   .index-nav button { min-width: auto; flex: 0 0 auto; padding-inline: 14px; }
   .index-nav button span { display: none; }
+  .demo-banner { top: 51px; width: calc(100% - 32px); margin-top: 10px; }
   main { width: min(100% - 32px, 620px); padding: 42px 0 64px; }
   .welcome, .field-kit-head { grid-template-columns: 1fr; }
   .welcome-copy { display: contents; }
@@ -277,6 +283,9 @@ dialog form { display: grid; gap: 12px; padding: clamp(22px, 5vw, 34px); }
   .brand svg { width: 36px; height: 36px; }
   .connection { max-width: 92px; line-height: 1.2; }
   .index-nav button { min-height: 48px; padding-inline: 12px; font-size: 11px; }
+  .demo-banner { display: grid; grid-template-columns: 1fr 1fr; }
+  .demo-banner strong, .demo-banner span { grid-column: 1 / -1; }
+  .demo-banner .quiet { margin-left: 0; }
   main { width: calc(100% - 24px); }
   .form-row { grid-template-columns: 1fr; }
   .work-sheet, .reconcile-card, .backup-block, .kit-card { padding: 20px 16px; }
