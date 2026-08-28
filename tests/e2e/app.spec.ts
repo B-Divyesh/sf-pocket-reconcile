@@ -80,6 +80,8 @@ test('@claim:account-name-uniqueness rejects case and whitespace variants of an 
 
 test('@claim:legacy-duplicate-csv rejects an ambiguous legacy account without saving the row', async ({ page }) => {
   await page.goto('/demo');
+  await expect(page.getByRole('heading', { level: 1, name: 'Weekend cash' })).toBeVisible();
+  await expect(page.getByText('Saturday market', { exact: true })).toBeVisible();
   await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('demo:pocket-reconcile');
