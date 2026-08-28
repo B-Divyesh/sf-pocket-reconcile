@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fractionDigits, moneyInput, parseMoney } from '../src/money';
+import { formatMoney, fractionDigits, moneyInput, parseMoney } from '../src/money';
 
 describe('decimal currency arithmetic', () => {
   it('converts decimal strings to integer minor units exactly', () => {
@@ -19,5 +19,18 @@ describe('decimal currency arithmetic', () => {
     expect(parseMoney('2400', 'JPY')).toBe(2400);
     expect(parseMoney('24.5', 'JPY')).toBeNull();
     expect(moneyInput(2400, 'JPY')).toBe('2400');
+  });
+
+  it('formats the maximum accepted minor-unit value without losing a cent', () => {
+    const minor = parseMoney('90071992547409.91', 'USD');
+    expect(minor).toBe(Number.MAX_SAFE_INTEGER);
+    expect(formatMoney(minor!, 'USD')).toBe('$90,071,992,547,409.91');
+    expect(moneyInput(minor!, 'USD')).toBe('90071992547409.91');
+  });
+
+  it('preserves the sign and cents for negative values below one major unit', () => {
+    expect(formatMoney(-1, 'USD')).toBe('-$0.01');
+    expect(formatMoney(-1, 'USD', true)).toBe('-$0.01');
+    expect(moneyInput(-1, 'USD')).toBe('-0.01');
   });
 });

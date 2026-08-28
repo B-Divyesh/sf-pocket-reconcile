@@ -19,6 +19,47 @@ test('creates an account, records an entry, and reconciles exactly', async ({ pa
   await expect(page.getByText('₹87.50 observed')).toBeVisible();
 });
 
+test('keeps the maximum accepted decimal amount cent-exact in the ledger', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByLabel('Account name').fill('Boundary wallet');
+  await page.getByLabel('Currency').selectOption('USD');
+  await page.getByLabel('Balance right now').fill('90071992547409.91');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('$90,071,992,547,409.91', { exact: true }).first()).toBeVisible();
+});
+
+test('rejects an impossible CSV date without changing the ledger', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plant my first account' }).click();
+  await page.getByLabel('Account name').fill('Pocket cash');
+  await page.getByLabel('Balance right now').fill('100.00');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.locator('#csv-import').setInputFiles({
+    name: 'impossible-date.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('date,account,amount,note\n2026-02-31,Pocket cash,-1.00,Impossible date')
+  });
+  await expect(page.getByRole('status')).toContainText('Row 2: use a date like 2026-08-28.');
+  await page.locator('button[data-nav="ledger"]').click();
+  await expect(page.getByText('0 total')).toBeVisible();
+  await expect(page.getByText('₹100.00', { exact: true }).first()).toBeVisible();
+});
+
+test('supports the primary keyboard path and dialog focus', async ({ page }) => {
+  await page.goto('/');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Skip to ledger' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main')).toBeFocused();
+  await page.getByRole('button', { name: 'Plant my first account' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Account name')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Plant my first account' })).toBeFocused();
+});
+
 test('has no serious accessibility violations on first run', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

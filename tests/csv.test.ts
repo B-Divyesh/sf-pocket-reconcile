@@ -20,4 +20,24 @@ describe('CSV ownership', () => {
     expect(parsed.transactions).toHaveLength(0);
     expect(parsed.errors[0]).toContain('does not exist');
   });
+
+  it.each(['2025-02-29', '2026-04-31', '2026-02-31'])(
+    'rejects the impossible calendar date %s without returning an import row',
+    occurredOn => {
+      vi.stubGlobal('crypto', { randomUUID: () => 'id' });
+      const parsed = parseCsv(`date,account,amount,note\n${occurredOn},Pocket cash,-1.00,Impossible date`, [account]);
+      expect(parsed.transactions).toEqual([]);
+      expect(parsed.errors).toEqual(['Row 2: use a date like 2026-08-28.']);
+    }
+  );
+
+  it.each(['2000-02-29', '2024-02-29', '2026-04-30'])(
+    'accepts the real calendar date %s',
+    occurredOn => {
+      vi.stubGlobal('crypto', { randomUUID: () => 'id' });
+      const parsed = parseCsv(`date,account,amount,note\n${occurredOn},Pocket cash,-1.00,Valid date`, [account]);
+      expect(parsed.errors).toEqual([]);
+      expect(parsed.transactions[0]?.occurredOn).toBe(occurredOn);
+    }
+  );
 });

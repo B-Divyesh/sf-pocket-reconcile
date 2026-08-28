@@ -20,15 +20,42 @@ export function parseMoney(value: string, currency: Currency): number | null {
 }
 
 export function formatMoney(minor: number, currency: Currency, showSign = false): string {
-  return new Intl.NumberFormat(undefined, {
+  const digits = fractionDigits(currency);
+  const { major, fraction, negative } = splitMinor(minor, digits);
+  // Intl formats BigInt without first rounding through a binary floating-point
+  // major-unit value. A -1 probe preserves the sign for values between -1 and 0.
+  const signedMajor = negative ? (major === 0n ? -1n : -major) : major;
+  const formatter = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency,
     signDisplay: showSign ? 'always' : 'auto',
-    minimumFractionDigits: fractionDigits(currency),
-    maximumFractionDigits: fractionDigits(currency)
-  }).format(minor / 10 ** fractionDigits(currency));
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  });
+  const digitFormatter = new Intl.NumberFormat(undefined, { useGrouping: false, maximumFractionDigits: 0 });
+  const localizedZero = digitFormatter.format(0);
+  const localizedFraction = fraction.replace(/\d/g, digit => digitFormatter.format(Number(digit)));
+  return formatter.formatToParts(signedMajor).map(part => {
+    if (part.type === 'integer' && negative && major === 0n) return localizedZero;
+    if (part.type === 'fraction') return localizedFraction;
+    return part.value;
+  }).join('');
 }
 
 export function moneyInput(minor: number, currency: Currency): string {
-  return (minor / 10 ** fractionDigits(currency)).toFixed(fractionDigits(currency));
+  const digits = fractionDigits(currency);
+  const { major, fraction, negative } = splitMinor(minor, digits);
+  return `${negative ? '-' : ''}${major}${digits ? `.${fraction}` : ''}`;
+}
+
+function splitMinor(minor: number, digits: number): { major: bigint; fraction: string; negative: boolean } {
+  if (!Number.isSafeInteger(minor)) throw new RangeError('Money must use safe integer minor units.');
+  const negative = minor < 0;
+  const absolute = BigInt(Math.abs(minor));
+  const scale = 10n ** BigInt(digits);
+  return {
+    major: absolute / scale,
+    fraction: digits ? String(absolute % scale).padStart(digits, '0') : '',
+    negative
+  };
 }

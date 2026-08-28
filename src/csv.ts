@@ -35,7 +35,7 @@ export function parseCsv(text: string, accounts: Account[]): { transactions: Tra
     const account = accounts.find(item => item.name.toLowerCase() === name.toLowerCase());
     if (!account) { errors.push(`Row ${line}: account “${name}” does not exist.`); return; }
     const occurredOn = row[index.date ?? -1]?.trim() ?? '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn) || Number.isNaN(Date.parse(`${occurredOn}T00:00:00`))) {
+    if (!isCalendarDate(occurredOn)) {
       errors.push(`Row ${line}: use a date like 2026-08-28.`); return;
     }
     const amountMinor = parseMoney(row[index.amount ?? -1] ?? '', account.currency);
@@ -46,6 +46,18 @@ export function parseCsv(text: string, accounts: Account[]): { transactions: Tra
     });
   });
   return { transactions, errors };
+}
+
+function isCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= (daysInMonth[month - 1] ?? 0);
 }
 
 function parseRows(text: string): string[][] {

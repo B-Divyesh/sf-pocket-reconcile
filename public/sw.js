@@ -1,4 +1,4 @@
-const VERSION = 'pocket-reconcile-v1';
+const VERSION = 'pocket-reconcile-v2';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const PRECACHE = ['/', '/offline.html', '/privacy/', '/terms/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/assets/pressed-ledger-384.webp', '/assets/pressed-ledger.webp', '/assets/pressed-ledger.jpg'];

@@ -390,7 +390,11 @@ function updateConnection(): void {
 async function start(): Promise<void> {
   captureLicenseFromUrl(); license = cachedLicense(); applyTheme();
   const hash = location.hash.slice(1) as Screen; if (['ledger', 'history', 'backup', 'field-kit', 'settings'].includes(hash)) screen = hash;
-  try { data = await loadData(); shell(); } catch { app.innerHTML = `<main id="main" class="fatal"><h1>Couldn’t open the local ledger.</h1><p>Your browser blocked IndexedDB. Allow site storage or try a non-private window, then reload.</p><button onclick="location.reload()">Try again</button></main>`; return; }
+  try { data = await loadData(); shell(); } catch {
+    app.innerHTML = `<main id="main" class="fatal"><h1>Couldn’t open the local ledger.</h1><p>Your browser blocked IndexedDB. Allow site storage or try a non-private window, then reload.</p><button id="retry-storage" type="button">Try again</button></main>`;
+    document.querySelector<HTMLButtonElement>('#retry-storage')?.addEventListener('click', () => location.reload());
+    return;
+  }
   license = await verifyLicense(); applyTheme(); if (screen === 'field-kit') shell();
   if ('serviceWorker' in navigator) {
     try {

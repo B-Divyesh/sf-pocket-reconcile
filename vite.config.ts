@@ -4,6 +4,7 @@ export default defineConfig({
   build: {
     target: 'es2022',
     outDir: 'dist',
+    assetsDir: 'immutable',
     rollupOptions: {
       input: {
         app: new URL('index.html', import.meta.url).pathname,
